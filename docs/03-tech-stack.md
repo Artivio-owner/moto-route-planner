@@ -36,7 +36,7 @@
 apps/web        # фронтенд
 apps/api        # бэкенд
 packages/calc   # топливо, дни, бюджет
-packages/shared # типы
+packages/shared # типы (создаём, когда появится второй потребитель)
 infra/          # docker-compose, конфиги GraphHopper
 ```
 
@@ -52,3 +52,6 @@ infra/          # docker-compose, конфиги GraphHopper
 | Кривизна дорог не поддерживается нужным образом | Нет режима «извилистые» | Спайк S-01, запасной вариант: Valhalla или свой расчёт |
 | Качество OSM по грунтовым дорогам неравномерное | Ошибки маршрутов | Предупреждения, возможность править точки вручную |
 | 152-ФЗ | Аккаунтов нет (ADR-0005), риск низкий | Юридические тексты по шаблону (решение владельца) |
+
+## Инструменты разработки (2026-10-21, F-02)
+pnpm workspaces, TypeScript 5.9 (strict), ESLint с typescript-eslint, Prettier (документы `*.md` не форматирует), Vitest, CI на GitHub Actions: `.github/workflows/ci.yml`.
