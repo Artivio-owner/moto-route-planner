@@ -18,6 +18,12 @@
 | [docs/03-tech-stack.md](docs/03-tech-stack.md) | Технический стек и архитектура (предложение) |
 | [docs/04-roadmap.md](docs/04-roadmap.md) | Роадмап Now / Next / Later |
 | [docs/05-marketing-seo.md](docs/05-marketing-seo.md) | Маркетинг и SEO |
+| [docs/06-poi-data-sources.md](docs/06-poi-data-sources.md) | Источники точек интереса |
+| [docs/07-budget-spec.md](docs/07-budget-spec.md) | Спецификация бюджета |
+| [docs/08-day-split-spec.md](docs/08-day-split-spec.md) | Разбивка по дням |
+| [docs/09-owner-answers-2026-10-21.md](docs/09-owner-answers-2026-10-21.md) | Ответы владельца на 30 вопросов |
+| [docs/10-brand-and-design.md](docs/10-brand-and-design.md) | Название и дизайн-направления |
+| [docs/11-pdf-report-spec.md](docs/11-pdf-report-spec.md) | PDF путевой лист |
 | [BACKLOG.md](BACKLOG.md) | Приоритизированный бэклог |
 | [docs/sprints/](docs/sprints/) | Планы спринтов |
 | [docs/decisions/](docs/decisions/) | Журнал архитектурных и продуктовых решений (ADR) |
