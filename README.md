@@ -23,6 +23,7 @@
 | [docs/08-day-split-spec.md](docs/08-day-split-spec.md) | Разбивка по дням |
 | [docs/09-owner-answers-2026-10-21.md](docs/09-owner-answers-2026-10-21.md) | Ответы владельца на 30 вопросов |
 | [docs/10-brand-and-design.md](docs/10-brand-and-design.md) | Название и дизайн-направления |
+| [docs/design/design-system.md](docs/design/design-system.md) | Дизайн-система: токены и компоненты |
 | [docs/11-pdf-report-spec.md](docs/11-pdf-report-spec.md) | PDF путевой лист |
 | [BACKLOG.md](BACKLOG.md) | Приоритизированный бэклог |
 | [docs/sprints/](docs/sprints/) | Планы спринтов |
