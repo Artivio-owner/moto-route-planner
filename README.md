@@ -25,6 +25,8 @@
 | [docs/10-brand-and-design.md](docs/10-brand-and-design.md) | Название и дизайн-направления |
 | [docs/12-open-questions.md](docs/12-open-questions.md) | Открытые вопросы по функционалу |
 | [docs/13-landing-copy.md](docs/13-landing-copy.md) | Лендинг: темы и тексты |
+| [docs/14-trip-parameters-spec.md](docs/14-trip-parameters-spec.md) | Параметры поездки: группа, мотоцикл, часовые пояса |
+| [docs/15-readiness-review-2026-10-21.md](docs/15-readiness-review-2026-10-21.md) | Готовность к разработке и вопросы владельцу |
 | [docs/design/design-system.md](docs/design/design-system.md) | Дизайн-система: токены и компоненты |
 | [docs/11-pdf-report-spec.md](docs/11-pdf-report-spec.md) | PDF путевой лист |
 | [BACKLOG.md](BACKLOG.md) | Приоритизированный бэклог |
