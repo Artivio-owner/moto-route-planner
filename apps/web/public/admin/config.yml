@@ -7,8 +7,8 @@ backend:
   commit_messages:
     update: "chore(data): {{collection}} «{{slug}}» через админку"
 
-media_folder: apps/web/public/admin/media
-public_folder: /admin/media
+media_folder: apps/web/public/media
+public_folder: /media
 
 collections:
   - name: settings
@@ -434,3 +434,16 @@ collections:
             }
           - { name: github, label: GitHub, widget: string }
           - { name: issues, label: Сообщить об ошибке (ссылка), widget: string }
+          - name: donate
+            label: Поддержать разработчика
+            widget: object
+            hint: Пока ссылка пустая, блок на сайте и в PDF не показывается. QR-код лучше загружать в PNG или JPG; если картинки нет, QR соберётся из ссылки.
+            fields:
+              - { name: label, label: Текст кнопки, widget: string }
+              - {
+                  name: url,
+                  label: "Ссылка на донат (https://...)",
+                  widget: string,
+                  required: false,
+                }
+              - { name: qrImage, label: QR-код, widget: image, required: false }

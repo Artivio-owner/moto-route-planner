@@ -560,3 +560,41 @@ select {
   text-align: right;
   white-space: nowrap;
 }
+
+/* Поддержать разработчика */
+.donate {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: var(--pad);
+}
+.donate .btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.donate.compact {
+  padding: 12px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+.donate-qr {
+  flex: none;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.donate.compact .donate-qr {
+  width: 88px;
+  height: 88px;
+}
+@media (max-width: 480px) {
+  .donate {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -9,6 +9,7 @@ import {
   pluralDays,
 } from "../lib/format";
 import type { DayWeather } from "../lib/api";
+import { DonateBlock } from "./DonateBlock";
 import type { PlanResult } from "../lib/plan";
 import { describeWeather, weatherSource, weatherWarnings } from "../lib/weather";
 
@@ -199,6 +200,7 @@ export function TripSheet({
           (CC BY 4.0). Дальше 16 дней показываем климатическую норму за прошлые годы.
         </p>
       )}
+      <DonateBlock compact />
     </section>
   );
 }

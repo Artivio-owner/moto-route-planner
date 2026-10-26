@@ -50,6 +50,8 @@ async function pick(page: Page, field: string, text: string) {
 
 test("лендинг ведёт в планировщик", async ({ page }) => {
   await page.goto("/");
+  // Пока владелец не указал ссылку на донат, блока поддержки нет.
+  await expect(page.getByRole("complementary", { name: "Поддержать разработчика" })).toHaveCount(0);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Рассчитайте мотопоездку");
   await page.getByRole("link", { name: "Построить маршрут" }).first().click();
   await expect(page.getByRole("heading", { name: "Маршрут" })).toBeVisible();

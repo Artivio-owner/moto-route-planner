@@ -1,7 +1,7 @@
 // PDF путевой лист, базовая версия v0.1 (ADR-0012): титул, сводка, карта, таблица по дням,
 // километраж по дням, источники. Спецификация: docs/11-pdf-report-spec.md.
 import fontkit from "@pdf-lib/fontkit";
-import { PDFDocument, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import { PDFDocument, PDFString, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
 import { FOOD_LABELS, LODGING_LABELS, formatLocalTime } from "@versta/calc";
 import { site } from "../config";
 import type { DayWeather, LonLat } from "../lib/api";
@@ -18,6 +18,7 @@ import {
 import { bounds, pointAtKm, type PlanResult } from "../lib/plan";
 import { CUSTOM_PRESET, completePoints, routeTitle, type PlannerState } from "../state/planner";
 import { presets } from "../config";
+import { donate as donateConfig, donateEnabled, donateQrForPdf, type PdfQr } from "../lib/donate";
 import { mapSnapshot } from "./mapSnapshot";
 
 export interface ReportInput {
@@ -28,6 +29,8 @@ export interface ReportInput {
   /** Погода по дням (C-13); null, если не получена. */
   weather?: (DayWeather | null)[];
   url: string;
+  /** «Поддержать разработчика»; если не задано, берётся из data/site.json (null: не показывать). */
+  donate?: { label: string; url: string; qr: PdfQr | null } | null;
   /** Для тестов: не пытаться рисовать карту через WebGL. */
   skipMapSnapshot?: boolean;
   fonts?: { regular: Uint8Array; bold: Uint8Array };
@@ -596,6 +599,76 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
     ].join("\n"),
     { size: 8.5, color: C.ink },
   );
+
+  // Поддержать разработчика: ссылка и QR-код из админки.
+  const donate =
+    input.donate !== undefined
+      ? input.donate
+      : donateEnabled
+        ? { label: donateConfig.label, url: donateConfig.url, qr: await donateQrForPdf() }
+        : null;
+  if (donate) {
+    const qrSize = 84;
+    w.ensure(qrSize + 30);
+    w.y -= 10;
+    const top = w.y;
+    w.page.drawRectangle({
+      x: M,
+      y: top - qrSize - 16,
+      width: A4.w - 2 * M,
+      height: qrSize + 16,
+      color: C.surface,
+      borderColor: C.line,
+      borderWidth: 1,
+    });
+    w.page.drawText(donate.label, { x: M + 12, y: top - 24, size: 13, font: bold, color: C.ink });
+    const lines = w.wrap(
+      "«Верста» бесплатная и без рекламы. Если сервис помог спланировать поездку, можно поддержать разработчика: наведите камеру на QR-код или откройте ссылку.",
+      regular,
+      8.5,
+      A4.w - 2 * M - qrSize - 40,
+    );
+    lines.forEach((line, i) =>
+      w.page.drawText(line, {
+        x: M + 12,
+        y: top - 42 - i * 11,
+        size: 8.5,
+        font: regular,
+        color: C.ink,
+      }),
+    );
+    const urlY = top - 46 - lines.length * 11;
+    w.page.drawText(donate.url, { x: M + 12, y: urlY, size: 8.5, font: regular, color: C.primary });
+    // Ссылка кликабельна при просмотре PDF на экране.
+    const urlWidth = regular.widthOfTextAtSize(donate.url, 8.5);
+    const annotation = doc.context.register(
+      doc.context.obj({
+        Type: "Annot",
+        Subtype: "Link",
+        Rect: [M + 12, urlY - 2, M + 12 + urlWidth, urlY + 9],
+        Border: [0, 0, 0],
+        A: { Type: "Action", S: "URI", URI: PDFString.of(donate.url) },
+      }),
+    );
+    w.page.node.addAnnot(annotation);
+    if (donate.qr) {
+      try {
+        const image =
+          donate.qr.kind === "png"
+            ? await doc.embedPng(donate.qr.bytes)
+            : await doc.embedJpg(donate.qr.bytes);
+        w.page.drawImage(image, {
+          x: A4.w - M - qrSize - 8,
+          y: top - qrSize - 8,
+          width: qrSize,
+          height: qrSize,
+        });
+      } catch {
+        // Повреждённая картинка не должна ломать путевой лист: остаётся ссылка.
+      }
+    }
+    w.y = top - qrSize - 16;
+  }
 
   // Номера страниц.
   const pages = doc.getPages();

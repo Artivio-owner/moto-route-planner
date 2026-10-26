@@ -1,4 +1,5 @@
 // Лендинг: тексты из docs/13-landing-copy.md. Публикуем только то, что уже работает (v0.1).
+import { DonateBlock } from "../components/DonateBlock";
 import { site } from "../config";
 import { Link } from "../router";
 
@@ -127,6 +128,10 @@ export function LandingPage() {
             <p>{a}</p>
           </details>
         ))}
+      </section>
+
+      <section className="page">
+        <DonateBlock />
       </section>
 
       <section className="page">
