@@ -37,3 +37,15 @@ export function fuelCost(liters: number, pricePerLiter: number): number {
   }
   return liters * pricePerLiter;
 }
+
+/**
+ * Отметки заправок, км от старта. Выезжаем с полным баком и заправляемся,
+ * когда до конца запаса хода остаётся не больше одного отрезка: заправки
+ * ставятся через каждые rangeKm. Реальные АЗС вдоль маршрута появятся в v0.3 (P-07).
+ */
+export function fuelStopsKm(distanceKm: number, range: number): number[] {
+  assertPositive("Запас хода", range);
+  const stops: number[] = [];
+  for (let km = range; km < distanceKm; km += range) stops.push(km);
+  return stops;
+}
