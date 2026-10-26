@@ -8,6 +8,7 @@ import { UserFacingError } from "./errors.js";
 import type { LonLat } from "./geometry.js";
 import type { GraphHopperClient, LatLon, LegResult } from "./graphhopper.js";
 import type { GeocoderClient } from "./photon.js";
+import type { WeatherClient } from "./weather.js";
 import { zoneMarks } from "./zones.js";
 
 export interface RouteRequest {
@@ -33,6 +34,7 @@ export interface Dependencies {
   config: Pick<ApiConfig, "routeRateLimit" | "webDir" | "tilesDir">;
   graphhopper: GraphHopperClient;
   geocoder: GeocoderClient;
+  weather?: WeatherClient;
 }
 
 const pointSchema = {
@@ -182,6 +184,30 @@ export function buildServer(deps: Dependencies): FastifyInstance {
     async (request) => ({
       place: await deps.geocoder.reverse(request.query.lat, request.query.lon),
     }),
+  );
+
+  app.get<{ Querystring: { lat: number; lon: number; date: string } }>(
+    "/api/weather",
+    {
+      config: { rateLimit: { max: 240, timeWindow: "1 minute" } },
+      schema: {
+        querystring: {
+          type: "object",
+          required: ["lat", "lon", "date"],
+          properties: {
+            lat: { type: "number", minimum: -90, maximum: 90 },
+            lon: { type: "number", minimum: -180, maximum: 180 },
+            date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+          },
+        },
+      },
+    },
+    async (request) => {
+      if (!deps.weather)
+        throw new UserFacingError("Погода не подключена", 503, "weather_unavailable");
+      const { lat, lon, date } = request.query;
+      return { weather: await deps.weather.day(lat, lon, date) };
+    },
   );
 
   if (deps.config.tilesDir) {

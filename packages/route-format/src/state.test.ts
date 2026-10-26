@@ -26,6 +26,24 @@ describe("состояние в ссылке", () => {
     }
   });
 
+  it("бюджет в ссылке; ссылки без бюджета открываются", async () => {
+    const state = {
+      ...sampleState(true),
+      budget: {
+        lodging: "guesthouse",
+        rooms: 2,
+        food: "economy",
+        coffee: true,
+        finalNight: true,
+        otherRub: 3500,
+        reservePct: 15,
+        roomPriceRub: 3100,
+      } as const,
+    };
+    expect((await decodeState(await encodeState(state))).budget).toEqual(state.budget);
+    expect((await decodeState(await encodeState(sampleState(true)))).budget).toBeUndefined();
+  });
+
   it("строка годится для адреса без экранирования", async () => {
     expect(await encodeState(sampleState(true))).toMatch(/^[A-Za-z0-9_-]+$/);
   });

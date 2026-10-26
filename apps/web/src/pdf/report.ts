@@ -2,9 +2,10 @@
 // километраж по дням, источники. Спецификация: docs/11-pdf-report-spec.md.
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
-import { formatLocalTime } from "@versta/calc";
+import { FOOD_LABELS, LODGING_LABELS, formatLocalTime } from "@versta/calc";
 import { site } from "../config";
-import type { LonLat } from "../lib/api";
+import type { DayWeather, LonLat } from "../lib/api";
+import { describeWeather, weatherSource, weatherWarnings } from "../lib/weather";
 import {
   formatDate,
   formatHours,
@@ -24,6 +25,8 @@ export interface ReportInput {
   result: PlanResult;
   line: { points: LonLat[]; km: number[] };
   dayLabels: { from: string; to: string }[];
+  /** Погода по дням (C-13); null, если не получена. */
+  weather?: (DayWeather | null)[];
   url: string;
   /** Для тестов: не пытаться рисовать карту через WebGL. */
   skipMapSnapshot?: boolean;
@@ -306,12 +309,83 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
     );
   }
 
+  // 7. Бюджет: статьи, формулы и допущения (спецификация 07).
+  w.heading("Бюджет");
+  const { budget, budgetPrices } = result;
+  const b = state.budget;
+  const rooms = plan.group.people === 1 ? 1 : b.rooms;
+  const edited = (flag: boolean) => (flag ? " (изменено вами)" : "");
+  const budgetRows: [string, number, string][] = [
+    [
+      "Топливо",
+      budget.fuel,
+      `${formatLiters(plan.liters)} × ${String(result.fuelPriceRub).replace(".", ",")} ₽/л${edited(result.fuelPriceEdited)}`,
+    ],
+    [
+      "Жильё",
+      budget.lodging,
+      `${budget.nightsPaid} ноч. × ${rooms} ном. × ${m(budgetPrices.room)} (${LODGING_LABELS[b.lodging].replace("★", " зв.")})${edited(budgetPrices.roomEdited)}`,
+    ],
+    [
+      "Еда",
+      budget.food,
+      `${plan.days.length} дн. × ${plan.group.people} чел. × ${m(budgetPrices.food)} (${FOOD_LABELS[b.food].toLowerCase()})${edited(budgetPrices.foodEdited)}`,
+    ],
+    [
+      "Кофе на заправках",
+      budget.coffee,
+      b.coffee
+        ? `${plan.fuelStops} заправ. × ${plan.group.people} чел. × ${m(budgetPrices.coffee)}${edited(budgetPrices.coffeeEdited)}`
+        : "не учитывается",
+    ],
+    ["Прочее", budget.other, "платные дороги, паромы и другое, вручную"],
+    ["Резерв", budget.reserve, `${b.reservePct}% от суммы статей`],
+  ];
+  for (const [label, value, formula] of budgetRows) {
+    w.ensure(16);
+    w.page.drawText(label, { x: M, y: w.y - 10, size: 9.5, font: bold, color: C.ink });
+    w.page.drawText(formula, { x: M + 120, y: w.y - 10, size: 8, font: regular, color: C.muted });
+    const valueText = m(value);
+    w.page.drawText(valueText, {
+      x: A4.w - M - regular.widthOfTextAtSize(valueText, 9.5),
+      y: w.y - 10,
+      size: 9.5,
+      font: regular,
+      color: C.ink,
+    });
+    w.y -= 15;
+    w.page.drawLine({
+      start: { x: M, y: w.y + 2 },
+      end: { x: A4.w - M, y: w.y + 2 },
+      thickness: 0.5,
+      color: C.line,
+    });
+  }
+  w.ensure(20);
+  const totalText = `Итого ${m(budget.total)}, на человека ${m(budget.perPerson)}`;
+  w.page.drawText(totalText, {
+    x: A4.w - M - bold.widthOfTextAtSize(totalText, 11),
+    y: w.y - 12,
+    size: 11,
+    font: bold,
+    color: C.ink,
+  });
+  w.y -= 20;
+  w.text(
+    "Жильё считается за номер, а не за человека. Все цены ориентировочные; изменённые вами помечены.",
+    {
+      size: 8,
+      color: C.muted,
+    },
+  );
+
   // 3. Карта маршрута.
-  w.heading("Карта маршрута");
   const nights = plan.days.slice(0, -1).map((d) => pointAtKm(line, d.endKm));
   const mapW = A4.w - 2 * M;
   const mapH = mapW * 0.62;
-  w.ensure(mapH + 20);
+  // Заголовок не должен остаться в конце страницы без карты.
+  w.ensure(mapH + 60);
+  w.heading("Карта маршрута");
   const snapshot = input.skipMapSnapshot ? null : await mapSnapshot(line.points, nights);
   if (snapshot) {
     const image = await doc.embedPng(snapshot.png);
@@ -437,9 +511,9 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
 
   // Километраж по дням.
   if (plan.days.length > 1) {
-    w.heading("Километраж по дням");
     const chartH = 130;
-    w.ensure(chartH + 30);
+    w.ensure(chartH + 70);
+    w.heading("Километраж по дням");
     const maxKm = Math.max(...plan.days.map((d) => d.distanceKm), 1);
     const chartW = A4.w - 2 * M;
     const barW = Math.min(30, (chartW - 10) / plan.days.length - 4);
@@ -488,12 +562,34 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
     });
   }
 
+  // 8. Погода: прогноз до 16 дней, дальше климатическая норма с пометкой.
+  const weather = input.weather ?? [];
+  if (weather.some(Boolean)) {
+    w.ensure(80);
+    w.heading("Погода");
+    plan.days.forEach((day, i) => {
+      const dw = weather[i];
+      const place = dayLabels[i]?.to ?? "";
+      const text = dw
+        ? `${describeWeather(dw)} (${weatherSource(dw)})${weatherWarnings(dw).length ? `. ${weatherWarnings(dw).join(". ")}` : ""}`
+        : "нет данных";
+      w.text(`День ${day.number}, ${formatDate(day.date)}, ${place}: ${text}`, {
+        size: 8.5,
+        gap: 2,
+      });
+    });
+    w.text("Погода в точке финиша дня. Источник: Open-Meteo.com, CC BY 4.0.", {
+      size: 8,
+      color: C.muted,
+    });
+  }
+
   // 9. Источники и оговорки.
   w.heading("Источники и оговорки");
   w.text(
     [
       "Расчёты ориентировочные: цены по умолчанию, состояние дорог, часовые пояса и правила въезда могут отличаться. Проверяйте маршрут перед выездом; за безопасность поездки отвечает водитель.",
-      "Маршрут и карта: © участники OpenStreetMap, данные доступны по лицензии ODbL (openstreetmap.org/copyright). Маршрутизация: GraphHopper.",
+      "Маршрут и карта: © участники OpenStreetMap, данные доступны по лицензии ODbL (openstreetmap.org/copyright). Маршрутизация: GraphHopper. Погода: Open-Meteo.com (CC BY 4.0).",
       "Время в пути считается по скоростям из профиля мотоцикла, остановкам на заправку (15 мин) и обеду (45 мин при 4 ч в пути и больше); паромы по расписанию из данных OSM.",
       `Открыть маршрут: ${input.url}`,
       `Сервис «Верста»: ${site.github}. Ошибки и вопросы: ${site.email}.`,

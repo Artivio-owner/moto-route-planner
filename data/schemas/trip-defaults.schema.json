@@ -11,7 +11,8 @@
     "split",
     "stops",
     "history",
-    "longRouteWarningKm"
+    "longRouteWarningKm",
+    "weather"
   ],
   "additionalProperties": false,
   "properties": {
@@ -104,6 +105,38 @@
     "longRouteWarningKm": {
       "type": "number",
       "minimum": 100
+    },
+    "weather": {
+      "type": "object",
+      "required": ["rainMm", "rainProbability", "windKmh", "coldC", "hotC"],
+      "additionalProperties": false,
+      "properties": {
+        "rainMm": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 200
+        },
+        "rainProbability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "windKmh": {
+          "type": "number",
+          "minimum": 10,
+          "maximum": 200
+        },
+        "coldC": {
+          "type": "number",
+          "minimum": -40,
+          "maximum": 30
+        },
+        "hotC": {
+          "type": "number",
+          "minimum": 15,
+          "maximum": 55
+        }
+      }
     }
   }
 }

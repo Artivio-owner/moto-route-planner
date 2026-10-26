@@ -21,5 +21,12 @@
     "maxEntries": 10,
     "keepDays": 30
   },
-  "longRouteWarningKm": 5000
+  "longRouteWarningKm": 5000,
+  "weather": {
+    "rainMm": 5,
+    "rainProbability": 60,
+    "windKmh": 50,
+    "coldC": 5,
+    "hotC": 33
+  }
 }

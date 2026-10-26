@@ -6,6 +6,7 @@ import {
   STATE_HASH_PREFIX,
 } from "@versta/route-format";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { BudgetCard } from "../components/BudgetCard";
 import { HistoryCard } from "../components/HistoryCard";
 import { MapView, type MapPoint } from "../components/MapView";
 import { ParamsCard } from "../components/ParamsCard";
@@ -16,6 +17,7 @@ import { coordsName, reversePlace, type LonLat } from "../lib/api";
 import { downloadBlob } from "../lib/download";
 import { computePlan, pointAtKm, routeLine, sliceLine } from "../lib/plan";
 import { useRoute } from "../lib/useRoute";
+import { useWeather } from "../lib/useWeather";
 import { clearHistory, readHistory, saveToHistory, type HistoryEntry } from "../state/history";
 import {
   completePoints,
@@ -162,6 +164,18 @@ export function PlannerPage() {
     };
   }, [result, line, state.split.mode, placeNames]);
 
+  const weatherRequests = useMemo(
+    () =>
+      result
+        ? result.plan.days.map((d) => {
+            const [lon, lat] = pointAtKm(line, d.endKm);
+            return { lat, lon, date: d.date };
+          })
+        : [],
+    [result, line],
+  );
+  const weather = useWeather(weatherRequests);
+
   const nights = useMemo(
     () =>
       result
@@ -261,6 +275,7 @@ export function PlannerPage() {
         )}
         <PointsCard state={state} dispatch={dispatch} />
         <ParamsCard state={state} dispatch={dispatch} />
+        <BudgetCard state={state} dispatch={dispatch} />
         <HistoryCard
           entries={history}
           onOpen={(entry) => {
@@ -289,6 +304,7 @@ export function PlannerPage() {
         <TripSheet
           result={result}
           dayLabels={dayLabels}
+          weather={weather}
           currency={state.currency}
           loading={loading}
           error={error}

@@ -35,3 +35,11 @@ export type {
   TripPlan,
   ZoneMark,
 } from "./trip.js";
+export {
+  FOOD_LABELS,
+  FOOD_LEVELS,
+  LODGING_LABELS,
+  LODGING_TYPES,
+  computeBudget,
+} from "./budget.js";
+export type { Budget, BudgetInput, FoodLevel, LodgingType } from "./budget.js";

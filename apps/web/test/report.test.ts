@@ -21,6 +21,19 @@ describe("PDF путевой лист", () => {
       line: routeLine(route),
       dayLabels: result.plan.days.map((_, i) => ({ from: `Город ${i}`, to: `Город ${i + 1}` })),
       url: "https://versta.example/plan#r=test",
+      weather: result.plan.days.map((d, i) =>
+        i === 1
+          ? null
+          : {
+              kind: i === 0 ? ("forecast" as const) : ("climate" as const),
+              date: d.date,
+              tempMaxC: 25,
+              tempMinC: 12,
+              precipitationMm: 6,
+              windMaxKmh: 20,
+              years: 10,
+            },
+      ),
       skipMapSnapshot: true,
       fonts: { regular: font("Rubik-Regular.ttf"), bold: font("Rubik-Bold.ttf") },
       now: new Date("2026-06-20T10:00:00Z"),

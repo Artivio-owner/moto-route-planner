@@ -80,3 +80,20 @@ export async function reversePlace(lat: number, lon: number): Promise<Place | nu
 export function coordsName(lat: number, lon: number): string {
   return `Точка ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
 }
+
+export interface DayWeather {
+  kind: "forecast" | "climate";
+  date: string;
+  tempMaxC: number;
+  tempMinC: number;
+  precipitationMm: number;
+  precipitationProbability?: number;
+  windMaxKmh: number;
+  weatherCode?: number;
+  years?: number;
+}
+
+export async function fetchWeather(lat: number, lon: number, date: string): Promise<DayWeather> {
+  const params = new URLSearchParams({ lat: lat.toFixed(3), lon: lon.toFixed(3), date });
+  return (await call<{ weather: DayWeather }>(`/api/weather?${params}`)).weather;
+}

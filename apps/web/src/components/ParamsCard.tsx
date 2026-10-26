@@ -5,6 +5,7 @@ import { formatKm } from "../lib/format";
 import { CUSTOM_PRESET, defaultSplit, type Action, type PlannerState } from "../state/planner";
 import { Chips } from "./Chips";
 import { NumberField } from "./NumberField";
+import { PriceMark } from "./PriceMark";
 
 interface Props {
   state: PlannerState;
@@ -232,18 +233,5 @@ export function ParamsCard({ state, dispatch }: Props) {
         </div>
       </div>
     </section>
-  );
-}
-
-/** Метка «ориентировочно» или «изменено вами» (спецификация 14, раздел 6). */
-function PriceMark({ edited, onReset }: { edited: boolean; onReset(): void }) {
-  if (!edited) return <span className="mark">ориентировочно</span>;
-  return (
-    <span className="row" style={{ gap: 6, marginTop: 4 }}>
-      <span className="mark edited">изменено вами</span>
-      <button type="button" className="link-btn" onClick={onReset}>
-        сбросить
-      </button>
-    </span>
   );
 }

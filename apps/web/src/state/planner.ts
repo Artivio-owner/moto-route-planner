@@ -1,6 +1,13 @@
 // Состояние планировщика и действия над ним.
-import type { ProfileState, RoutePoint, RouteState } from "@versta/route-format";
-import { defaultFuel, presets, presetToProfile, tripDefaults, type FuelType } from "../config";
+import type { BudgetState, ProfileState, RoutePoint, RouteState } from "@versta/route-format";
+import {
+  defaultBudget,
+  defaultFuel,
+  presets,
+  presetToProfile,
+  tripDefaults,
+  type FuelType,
+} from "../config";
 
 export interface EditablePoint {
   id: string;
@@ -23,6 +30,7 @@ export interface PlannerState {
   fuelType: FuelType;
   fuelPriceRub?: number;
   rubPerUsd?: number;
+  budget: BudgetState;
 }
 
 export const CUSTOM_PRESET = "custom";
@@ -70,6 +78,7 @@ export function initialState(now = new Date()): PlannerState {
     split: defaultSplit(tripDefaults.split.mode, preset),
     currency: tripDefaults.currency,
     fuelType: defaultFuel,
+    budget: defaultBudget(),
   };
 }
 
@@ -99,6 +108,7 @@ export function toRouteState(state: PlannerState): RouteState {
     split: state.split,
     currency: state.currency,
     fuelType: state.fuelType,
+    budget: state.budget,
   };
   if (state.fuelPriceRub !== undefined) route.fuelPriceRub = state.fuelPriceRub;
   if (state.rubPerUsd !== undefined) route.rubPerUsd = state.rubPerUsd;
@@ -112,7 +122,7 @@ export function fromRouteState(route: RouteState): PlannerState {
     return point;
   });
   while (points.length < 2) points.push({ id: newId(), name: "" });
-  const state: PlannerState = { ...route, points };
+  const state: PlannerState = { ...route, points, budget: route.budget ?? defaultBudget() };
   return state;
 }
 
@@ -131,6 +141,8 @@ export type Action =
   | { type: "toggleOvernight"; id: string }
   | { type: "set"; patch: Partial<Omit<PlannerState, "points" | "profile">> }
   | { type: "resetPrice"; field: "fuelPriceRub" | "rubPerUsd" }
+  | { type: "budget"; patch: Partial<BudgetState> }
+  | { type: "resetBudgetPrice"; field: "roomPriceRub" | "foodPriceRub" | "coffeePriceRub" }
   | { type: "preset"; id: string }
   | { type: "profileField"; field: ProfileField; value: number }
   | { type: "speed"; field: SpeedField; value: number };
@@ -215,6 +227,10 @@ export function reducer(state: PlannerState, action: Action): PlannerState {
     }
     case "resetPrice":
       return withoutKey(state, action.field);
+    case "budget":
+      return { ...state, budget: { ...state.budget, ...action.patch } };
+    case "resetBudgetPrice":
+      return { ...state, budget: withoutKey(state.budget, action.field) };
     case "preset": {
       const preset = presets.find((p) => p.id === action.id);
       if (!preset) return { ...state, profile: { ...state.profile, presetId: CUSTOM_PRESET } };
