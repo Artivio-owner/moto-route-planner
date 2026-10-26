@@ -2,6 +2,7 @@
 // километраж по дням, источники. Спецификация: docs/11-pdf-report-spec.md.
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import { formatLocalTime } from "@versta/calc";
 import { site } from "../config";
 import type { LonLat } from "../lib/api";
 import {
@@ -340,7 +341,7 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
     { title: "Откуда — куда", w: 140 },
     { title: "Км", w: 45 },
     { title: "В пути", w: 45 },
-    { title: "Старт — финиш (местное)", w: 110 },
+    { title: "Старт, финиш, закат", w: 110 },
     { title: "Запр.", w: 30 },
     { title: "Топливо", w: 75 },
   ];
@@ -374,7 +375,17 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
       label ? `${label.from} — ${label.to}` : "",
       formatKm(day.distanceKm).replace("\u00a0км", ""),
       formatHours(day.totalH).replace("\u00a0ч", ""),
-      `${localTimeWithZone(day.departure, day.startTimeZone)}\n${localTimeWithZone(day.arrival, day.endTimeZone)}`,
+      [
+        localTimeWithZone(day.departure, day.startTimeZone),
+        localTimeWithZone(day.arrival, day.endTimeZone),
+        day.sunset
+          ? `закат ${formatLocalTime(day.sunset, day.endTimeZone)}`
+          : day.polar === "day"
+            ? "полярный день"
+            : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
       String(day.fuelStopsKm.length),
       `${formatLiters(day.liters)}\n${m(day.fuelCostRub)}`,
     ];
@@ -420,7 +431,7 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
   });
   w.y -= 6;
   w.text(
-    "Время старта и финиша местное, в скобках часовой пояс. «Запр.»: число заправок за день.",
+    "Время старта, финиша и заката местное, в скобках часовой пояс. Закат считается в точке финиша дня. «Запр.»: число заправок за день.",
     { size: 8, color: C.muted },
   );
 

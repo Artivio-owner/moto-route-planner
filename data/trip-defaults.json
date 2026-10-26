@@ -5,13 +5,21 @@
   "motorcycles": 1,
   "currency": "RUB",
   "avoidUnpaved": true,
-  "split": { "mode": "km", "maxKmPerDay": 400 },
+  "split": {
+    "mode": "km",
+    "maxKmPerDay": 400,
+    "maxHoursPerDay": 8,
+    "days": 3
+  },
   "stops": {
     "dayStart": "08:00",
     "fuelStopMin": 15,
     "lunchMin": 45,
     "lunchAfterDrivingH": 4
   },
-  "history": { "maxEntries": 10, "keepDays": 30 },
+  "history": {
+    "maxEntries": 10,
+    "keepDays": 30
+  },
   "longRouteWarningKm": 5000
 }

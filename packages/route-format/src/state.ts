@@ -32,7 +32,11 @@ export interface RouteState {
   people: 1 | 2;
   motorcycles: 1 | 2;
   profile: ProfileState;
-  split: { mode: "km"; maxKmPerDay: number } | { mode: "manual" };
+  split:
+    | { mode: "km"; maxKmPerDay: number }
+    | { mode: "manual" }
+    | { mode: "hours"; maxHoursPerDay: number }
+    | { mode: "days"; days: number };
   currency: "RUB" | "USD";
   fuelType: "92" | "95" | "100";
   /** Цена, если пользователь её изменил; иначе берётся значение по умолчанию. */
@@ -54,12 +58,35 @@ type Packed = [
   people: number,
   motorcycles: number,
   profile: [string, number, number, number, number, number, number, number, number, number],
-  split: number,
+  /** Число: км в день (0 = вручную); массив [1, часы] или [2, дни] для новых режимов. */
+  split: number | [code: number, value: number],
   currency: number,
   fuelType: string,
   fuelPriceRub: number | null,
   rubPerUsd: number | null,
 ];
+
+function packSplit(split: RouteState["split"]): Packed[7] {
+  switch (split.mode) {
+    case "km":
+      return split.maxKmPerDay;
+    case "manual":
+      return 0;
+    case "hours":
+      return [1, split.maxHoursPerDay];
+    case "days":
+      return [2, split.days];
+  }
+}
+
+function unpackSplit(raw: unknown): RouteState["split"] {
+  if (isFiniteNumber(raw)) return raw > 0 ? { mode: "km", maxKmPerDay: raw } : { mode: "manual" };
+  if (Array.isArray(raw) && isFiniteNumber(raw[1]) && raw[1] > 0) {
+    if (raw[0] === 1) return { mode: "hours", maxHoursPerDay: raw[1] };
+    if (raw[0] === 2) return { mode: "days", days: Math.round(raw[1]) };
+  }
+  throw new Error("Ссылка повреждена: разбивка по дням");
+}
 
 function pack(state: RouteState): Packed {
   let prevLat = 0;
@@ -97,7 +124,7 @@ function pack(state: RouteState): Packed {
       pr.dailyLimitH,
       pr.heavyDayKm,
     ],
-    state.split.mode === "km" ? state.split.maxKmPerDay : 0,
+    packSplit(state.split),
     state.currency === "USD" ? 1 : 0,
     state.fuelType,
     state.fuelPriceRub ?? null,
@@ -145,7 +172,7 @@ function unpack(raw: unknown): RouteState {
   const [presetId, tankL, consumption, motorway, trunk, regional, local, limitKm, limitH, heavyKm] =
     profile;
   const numbers = [tankL, consumption, motorway, trunk, regional, local, limitKm, limitH, heavyKm];
-  if (typeof presetId !== "string" || !numbers.every(isFiniteNumber) || !isFiniteNumber(split)) {
+  if (typeof presetId !== "string" || !numbers.every(isFiniteNumber)) {
     throw new Error("Ссылка повреждена: параметры");
   }
   if (
@@ -172,7 +199,7 @@ function unpack(raw: unknown): RouteState {
       dailyLimitH: limitH,
       heavyDayKm: heavyKm,
     },
-    split: split > 0 ? { mode: "km", maxKmPerDay: split } : { mode: "manual" },
+    split: unpackSplit(split),
     currency: currency === 1 ? "USD" : "RUB",
     fuelType: fuelType as RouteState["fuelType"],
   };

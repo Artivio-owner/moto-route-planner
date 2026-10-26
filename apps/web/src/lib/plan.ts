@@ -30,6 +30,7 @@ export function computePlan(state: PlannerState, route: RouteResponse): PlanResu
     return result;
   });
   const fuelPriceRub = fuelPriceOf(state);
+  const line = routeLine(route);
   const plan = planTrip({
     legs,
     split: state.split,
@@ -39,6 +40,10 @@ export function computePlan(state: PlannerState, route: RouteResponse): PlanResu
     zones: route.zones.length ? route.zones : [{ fromKm: 0, timeZone: "Europe/Moscow" }],
     fuelPriceRub,
     stops: stopSettings,
+    positionAtKm: (km) => {
+      const [lon, lat] = pointAtKm(line, km);
+      return { lat, lon };
+    },
   });
   return {
     plan,

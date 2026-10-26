@@ -74,6 +74,24 @@ async function readPdfHead(download: { path(): Promise<string | null> }): Promis
   return path ? readFileSync(path).subarray(0, 5).toString("latin1") : "";
 }
 
+test("разбивка по числу дней и закат в дне", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/plan");
+  await pick(page, "Откуда, точка 1", "Старт");
+  await pick(page, "Куда, точка 2", "Финиш");
+  await page
+    .getByRole("group", { name: "Дни" })
+    .getByRole("button", { name: "По числу дней" })
+    .click();
+  const days = page.getByLabel(/Уложиться в/);
+  await days.fill("3");
+  await days.press("Enter");
+  await expect(page.getByRole("list", { name: "Дни поездки" }).getByRole("listitem")).toHaveCount(
+    3,
+  );
+  await expect(page.getByText(/закат \d\d:\d\d/).first()).toBeVisible();
+});
+
 test("ссылка восстанавливает маршрут", async ({ page }) => {
   await mockApi(page);
   await page.goto("/plan");

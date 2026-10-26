@@ -35,6 +35,23 @@ export function todayIso(now = new Date()): string {
   return local.toISOString().slice(0, 10);
 }
 
+/** Разбивка по умолчанию для режима: лимиты берутся из пресета. */
+export function defaultSplit(
+  mode: PlannerState["split"]["mode"],
+  profile: { dailyLimitKm: number; dailyLimitH: number },
+): PlannerState["split"] {
+  switch (mode) {
+    case "km":
+      return { mode, maxKmPerDay: profile.dailyLimitKm };
+    case "hours":
+      return { mode, maxHoursPerDay: profile.dailyLimitH };
+    case "days":
+      return { mode, days: tripDefaults.split.days };
+    case "manual":
+      return { mode };
+  }
+}
+
 export function initialState(now = new Date()): PlannerState {
   const preset = presets.find((p) => p.id === tripDefaults.presetId) ?? presets[0];
   if (!preset) throw new Error("Нет пресетов в data/moto-presets.json");
@@ -50,10 +67,7 @@ export function initialState(now = new Date()): PlannerState {
     motorcycles: tripDefaults.motorcycles,
     profile: presetToProfile(preset),
     // Дневная норма берётся из пресета: иначе каждый день сразу превышал бы его лимит.
-    split:
-      tripDefaults.split.mode === "manual"
-        ? { mode: "manual" }
-        : { mode: "km", maxKmPerDay: preset.dailyLimitKm },
+    split: defaultSplit(tripDefaults.split.mode, preset),
     currency: tripDefaults.currency,
     fuelType: defaultFuel,
   };
@@ -204,9 +218,10 @@ export function reducer(state: PlannerState, action: Action): PlannerState {
     case "preset": {
       const preset = presets.find((p) => p.id === action.id);
       if (!preset) return { ...state, profile: { ...state.profile, presetId: CUSTOM_PRESET } };
+      // Лимиты разбивки по км и по часам следуют за пресетом.
       const split =
-        state.split.mode === "km"
-          ? { mode: "km" as const, maxKmPerDay: preset.dailyLimitKm }
+        state.split.mode === "km" || state.split.mode === "hours"
+          ? defaultSplit(state.split.mode, preset)
           : state.split;
       return {
         ...state,

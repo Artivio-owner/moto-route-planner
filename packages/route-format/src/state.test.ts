@@ -16,6 +16,16 @@ describe("состояние в ссылке", () => {
     expect(await decodeState(await encodeState(state))).toEqual(state);
   });
 
+  it("режимы по времени и по числу дней", async () => {
+    for (const split of [
+      { mode: "hours", maxHoursPerDay: 7.5 },
+      { mode: "days", days: 12 },
+    ] as const) {
+      const state = { ...sampleState(false), split };
+      expect((await decodeState(await encodeState(state))).split).toEqual(split);
+    }
+  });
+
   it("строка годится для адреса без экранирования", async () => {
     expect(await encodeState(sampleState(true))).toMatch(/^[A-Za-z0-9_-]+$/);
   });

@@ -2,7 +2,7 @@ import { ROAD_CLASS_LABELS, ROAD_CLASSES, rangeKm } from "@versta/calc";
 import type { Dispatch } from "react";
 import { defaultFuelPrice, exchangeRate, presets, type FuelType } from "../config";
 import { formatKm } from "../lib/format";
-import { CUSTOM_PRESET, type Action, type PlannerState } from "../state/planner";
+import { CUSTOM_PRESET, defaultSplit, type Action, type PlannerState } from "../state/planner";
 import { Chips } from "./Chips";
 import { NumberField } from "./NumberField";
 
@@ -134,18 +134,13 @@ export function ParamsCard({ state, dispatch }: Props) {
         value={state.split.mode}
         options={[
           { value: "km", label: "По километрам" },
+          { value: "hours", label: "По времени" },
+          { value: "days", label: "По числу дней" },
           { value: "manual", label: "От города до города" },
         ]}
-        onChange={(mode) =>
-          set({
-            split:
-              mode === "km"
-                ? { mode: "km", maxKmPerDay: profile.dailyLimitKm }
-                : { mode: "manual" },
-          })
-        }
+        onChange={(mode) => set({ split: defaultSplit(mode, profile) })}
       />
-      {state.split.mode === "km" ? (
+      {state.split.mode === "km" && (
         <NumberField
           label="Не больше в день"
           unit="км"
@@ -154,7 +149,31 @@ export function ParamsCard({ state, dispatch }: Props) {
           value={state.split.maxKmPerDay}
           onChange={(maxKmPerDay) => set({ split: { mode: "km", maxKmPerDay } })}
         />
-      ) : (
+      )}
+      {state.split.mode === "hours" && (
+        <>
+          <NumberField
+            label="Не больше в пути за день"
+            unit="ч"
+            min={1}
+            max={20}
+            value={state.split.maxHoursPerDay}
+            onChange={(maxHoursPerDay) => set({ split: { mode: "hours", maxHoursPerDay } })}
+          />
+          <p className="hint">Время включает остановки на заправку и обед.</p>
+        </>
+      )}
+      {state.split.mode === "days" && (
+        <NumberField
+          label="Уложиться в"
+          unit="дней"
+          min={1}
+          max={100}
+          value={state.split.days}
+          onChange={(days) => set({ split: { mode: "days", days: Math.round(days) } })}
+        />
+      )}
+      {state.split.mode === "manual" && (
         <p className="hint">Отметьте «Ночёвка здесь» у промежуточных точек маршрута.</p>
       )}
 

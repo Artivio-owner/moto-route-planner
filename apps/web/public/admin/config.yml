@@ -212,7 +212,13 @@ collections:
                   name: mode,
                   label: Режим,
                   widget: select,
-                  options: [{ label: По километрам, value: km }, { label: Вручную, value: manual }],
+                  options:
+                    [
+                      { label: По километрам, value: km },
+                      { label: По времени в пути, value: hours },
+                      { label: По числу дней, value: days },
+                      { label: Вручную, value: manual },
+                    ],
                 }
               - {
                   name: maxKmPerDay,
@@ -222,6 +228,15 @@ collections:
                   min: 50,
                   max: 2000,
                 }
+              - {
+                  name: maxHoursPerDay,
+                  label: Часов в день,
+                  widget: number,
+                  value_type: float,
+                  min: 1,
+                  max: 20,
+                }
+              - { name: days, label: Дней, widget: number, value_type: int, min: 1, max: 100 }
           - name: stops
             label: Остановки
             widget: object

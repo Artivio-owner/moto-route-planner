@@ -4,8 +4,15 @@
 import { dayBoundariesKm, type Leg, type SplitMode } from "./days.js";
 import { fuelCost, fuelLiters, fuelStopsKm, rangeKm } from "./fuel.js";
 import { normalizeGroup, type Group } from "./group.js";
-import { drivingTimeH, sliceSegments, type Segment, type Speeds } from "./roads.js";
-import { addDays, utcOffsetMinutes, zonedTimeToInstant } from "./time.js";
+import {
+  drivingTimeH,
+  segmentDurationH,
+  sliceSegments,
+  type Segment,
+  type Speeds,
+} from "./roads.js";
+import { sunTimes } from "./sun.js";
+import { addDays, formatLocalTime, utcOffsetMinutes, zonedTimeToInstant } from "./time.js";
 
 export interface MotoProfile {
   tankL: number;
@@ -53,9 +60,11 @@ export interface TripInput {
   /** Цена топлива, ₽ за литр. */
   fuelPriceRub: number;
   stops?: StopSettings;
+  /** Координаты точки на отметке км: нужны для восхода и заката (C-06). */
+  positionAtKm?: (km: number) => { lat: number; lon: number };
 }
 
-export type DayWarningKind = "overDailyKm" | "overDailyHours" | "heavyDay";
+export type DayWarningKind = "overDailyKm" | "overDailyHours" | "heavyDay" | "afterSunset";
 
 export interface DayWarning {
   kind: DayWarningKind;
@@ -84,6 +93,10 @@ export interface DayPlan {
   hasFerry: boolean;
   liters: number;
   fuelCostRub: number;
+  /** Восход в точке старта и закат в точке финиша дня; null при полярном дне или ночи. */
+  sunrise: Date | null;
+  sunset: Date | null;
+  polar: "day" | "night" | null;
   warnings: DayWarning[];
 }
 
@@ -143,14 +156,135 @@ function dayWarnings(
   return warnings;
 }
 
+/** Нарастающее ходовое время по участкам: точки [км, ч] в концах участков. */
+function timeProfile(segments: readonly Segment[], speeds: Speeds): { km: number[]; h: number[] } {
+  const km = [0];
+  const h = [0];
+  for (const segment of segments) {
+    km.push((km[km.length - 1] ?? 0) + segment.distanceKm);
+    h.push((h[h.length - 1] ?? 0) + segmentDurationH(segment, speeds));
+  }
+  return { km, h };
+}
+
+/** Ходовое время от старта до отметки км (линейно внутри участка). */
+function hoursAtKm(profile: { km: number[]; h: number[] }, atKm: number): number {
+  for (let i = 1; i < profile.km.length; i++) {
+    const k1 = profile.km[i] ?? 0;
+    if (k1 >= atKm) {
+      const k0 = profile.km[i - 1] ?? 0;
+      const h0 = profile.h[i - 1] ?? 0;
+      const h1 = profile.h[i] ?? 0;
+      return k1 === k0 ? h1 : h0 + ((atKm - k0) / (k1 - k0)) * (h1 - h0);
+    }
+  }
+  return profile.h[profile.h.length - 1] ?? 0;
+}
+
+/** Отметка км, на которой ходовое время достигает atH. */
+function kmAtHours(profile: { km: number[]; h: number[] }, atH: number): number {
+  for (let i = 1; i < profile.h.length; i++) {
+    const h1 = profile.h[i] ?? 0;
+    if (h1 >= atH) {
+      const h0 = profile.h[i - 1] ?? 0;
+      const k0 = profile.km[i - 1] ?? 0;
+      const k1 = profile.km[i] ?? 0;
+      return h1 === h0 ? k1 : k0 + ((atH - h0) / (h1 - h0)) * (k1 - k0);
+    }
+  }
+  return profile.km[profile.km.length - 1] ?? 0;
+}
+
+/** Время дня с остановками: ходовое, заправки на участке, обед. */
+function dayTotalH(
+  profile: { km: number[]; h: number[] },
+  fuelStops: readonly number[],
+  stops: StopSettings,
+  fromKm: number,
+  toKm: number,
+): number {
+  const driving = hoursAtKm(profile, toKm) - hoursAtKm(profile, fromKm);
+  const fuel = fuelStops.filter((k) => k > fromKm && k <= toKm).length;
+  const lunch = driving >= stops.lunchAfterDrivingH ? stops.lunchMin : 0;
+  return driving + (fuel * stops.fuelStopMin + lunch) / 60;
+}
+
+/** Границы дней по лимиту часов в пути с остановками (C-08). */
+function boundariesByHours(
+  profile: { km: number[]; h: number[] },
+  fuelStops: readonly number[],
+  stops: StopSettings,
+  maxHours: number,
+): number[] {
+  if (!Number.isFinite(maxHours) || maxHours <= 0)
+    throw new RangeError("Лимит часов в день должен быть больше 0");
+  const total = profile.km[profile.km.length - 1] ?? 0;
+  const boundaries: number[] = [];
+  let start = 0;
+  while (total - start > 1e-6) {
+    if (dayTotalH(profile, fuelStops, stops, start, total) <= maxHours) break;
+    // Бинарный поиск самой дальней точки, до которой день укладывается в лимит.
+    let lo = start;
+    let hi = total;
+    for (let i = 0; i < 50; i++) {
+      const mid = (lo + hi) / 2;
+      if (dayTotalH(profile, fuelStops, stops, start, mid) <= maxHours) lo = mid;
+      else hi = mid;
+    }
+    // Даже если один участок длиннее лимита (паром), день не может быть пустым.
+    const end = lo - start < 1 ? Math.min(total, start + 1) : lo;
+    boundaries.push(end);
+    start = end;
+  }
+  boundaries.push(total);
+  return boundaries;
+}
+
+/** Границы для N дней примерно поровну по ходовому времени (C-09). */
+function boundariesByDays(profile: { km: number[]; h: number[] }, days: number): number[] {
+  if (!Number.isInteger(days) || days < 1)
+    throw new RangeError("Число дней должно быть целым и не меньше 1");
+  const totalH = profile.h[profile.h.length - 1] ?? 0;
+  const totalKm = profile.km[profile.km.length - 1] ?? 0;
+  const boundaries: number[] = [];
+  for (let d = 1; d < days; d++) boundaries.push(kmAtHours(profile, (totalH * d) / days));
+  boundaries.push(totalKm);
+  return boundaries;
+}
+
+function sunForDay(
+  input: TripInput,
+  date: string,
+  startKm: number,
+  endKm: number,
+): Pick<DayPlan, "sunrise" | "sunset" | "polar"> {
+  if (!input.positionAtKm) return { sunrise: null, sunset: null, polar: null };
+  const start = input.positionAtKm(startKm);
+  const end = input.positionAtKm(endKm);
+  const atEnd = sunTimes(date, end.lat, end.lon);
+  return {
+    sunrise: sunTimes(date, start.lat, start.lon).sunrise,
+    sunset: atEnd.sunset,
+    polar: atEnd.polar,
+  };
+}
+
 export function planTrip(input: TripInput): TripPlan {
   const stops = input.stops ?? DEFAULT_STOPS;
   const group = normalizeGroup(input.group);
   const segments: Segment[] = input.legs.flatMap((leg) => leg.segments);
   const range = rangeKm(input.profile.tankL, input.profile.consumptionLPer100Km);
-  const boundaries = dayBoundariesKm(input.legs, input.split);
+  const totalKm = segments.reduce((sum, seg) => sum + seg.distanceKm, 0);
+  const allFuelStops = fuelStopsKm(totalKm, range);
+  const profile = timeProfile(segments, input.profile.speeds);
+  const { split } = input;
+  const boundaries =
+    split.mode === "hours"
+      ? boundariesByHours(profile, allFuelStops, stops, split.maxHoursPerDay)
+      : split.mode === "days"
+        ? boundariesByDays(profile, split.days)
+        : dayBoundariesKm(input.legs, split);
   const distanceKm = boundaries[boundaries.length - 1] ?? 0;
-  const allFuelStops = fuelStopsKm(distanceKm, range);
 
   const days: DayPlan[] = [];
   let startKm = 0;
@@ -190,7 +324,18 @@ export function planTrip(input: TripInput): TripPlan {
       liters,
       fuelCostRub: fuelCost(liters, input.fuelPriceRub),
     };
-    days.push({ ...day, warnings: dayWarnings(day, input.profile) });
+    const sun = sunForDay(input, date, startKm, endKm);
+    const warnings = dayWarnings(day, input.profile);
+    if (sun.sunset && arrival > sun.sunset) {
+      warnings.push({
+        kind: "afterSunset",
+        message: `Финиш после заката (закат в ${formatLocalTime(sun.sunset, endTimeZone)}): сдвиньте старт раньше или ночёвку ближе`,
+      });
+    }
+    if (sun.polar === "night") {
+      warnings.push({ kind: "afterSunset", message: "Полярная ночь: весь день в темноте" });
+    }
+    days.push({ ...day, ...sun, warnings });
     startKm = endKm;
   });
 

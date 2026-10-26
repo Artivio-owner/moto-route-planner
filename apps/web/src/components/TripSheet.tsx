@@ -1,4 +1,4 @@
-import type { Currency } from "@versta/calc";
+import { formatLocalTime, type Currency } from "@versta/calc";
 import {
   formatDate,
   formatHours,
@@ -144,6 +144,8 @@ export function TripSheet({
               <div className="day-meta">
                 <span>старт {localTimeWithZone(day.departure, day.startTimeZone)}</span>
                 <span>финиш {localTimeWithZone(day.arrival, day.endTimeZone)}</span>
+                {day.sunset && <span>закат {formatLocalTime(day.sunset, day.endTimeZone)}</span>}
+                {day.polar === "day" && <span>полярный день</span>}
                 {day.zoneShiftH !== 0 && (
                   <span>
                     пояс {day.zoneShiftH > 0 ? "+" : ""}

@@ -20,6 +20,8 @@ describe("расчёт плана из ответа API", () => {
     expect(fuelPriceEdited).toBe(false);
     expect(plan.days[0]?.hasToll).toBe(true);
     expect(plan.days[2]?.endTimeZone).toBe("Europe/Samara");
+    // Закат считается по координатам финиша дня (C-06): 1 июля в Поволжье около 21 часа.
+    expect(plan.days[0]?.sunset?.getUTCHours()).toBeGreaterThanOrEqual(16);
   });
 
   it("вручную: ночёвка в Нижнем Новгороде", () => {

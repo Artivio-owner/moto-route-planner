@@ -22,6 +22,8 @@ export {
   utcOffsetMinutes,
   zonedTimeToInstant,
 } from "./time.js";
+export { sunTimes } from "./sun.js";
+export type { SunTimes } from "./sun.js";
 export { DEFAULT_STOPS, planTrip, zoneAtKm } from "./trip.js";
 export type {
   DayPlan,

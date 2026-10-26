@@ -20,7 +20,12 @@ export const tripDefaults = tripDefaultsJson as typeof tripDefaultsJson & {
   people: 1 | 2;
   motorcycles: 1 | 2;
   currency: "RUB" | "USD";
-  split: { mode: "km" | "manual"; maxKmPerDay: number };
+  split: {
+    mode: "km" | "manual" | "hours" | "days";
+    maxKmPerDay: number;
+    maxHoursPerDay: number;
+    days: number;
+  };
 };
 export const site = siteJson;
 export const countries = countriesJson.countries;
