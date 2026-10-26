@@ -1,0 +1,53 @@
+# Развёртывание «Версты» на одном сервере (F-04). Инструкция: docs/deploy.md.
+# Запуск из каталога infra/: docker compose up -d
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: infra/app.Dockerfile
+    environment:
+      GRAPHHOPPER_URL: http://graphhopper:8989
+      PHOTON_URL: http://photon:2322
+      ROUTE_RATE_LIMIT: ${ROUTE_RATE_LIMIT:-60}
+    volumes:
+      - ${DATA_DIR:-./data}/tiles:/tiles:ro
+    depends_on:
+      - graphhopper
+    restart: unless-stopped
+
+  graphhopper:
+    build: ./graphhopper
+    environment:
+      JAVA_OPTS: -Xmx${GRAPHHOPPER_MEMORY:-12g}
+      OSM_FILE: /data/region.osm.pbf
+    volumes:
+      - ${DATA_DIR:-./data}/osm:/data:ro
+      - graph-cache:/graph-cache
+    restart: unless-stopped
+
+  photon:
+    build: ./photon
+    environment:
+      JAVA_OPTS: -Xmx${PHOTON_MEMORY:-4g}
+    volumes:
+      - ${DATA_DIR:-./data}/photon:/photon/photon_data
+    restart: unless-stopped
+    profiles: ["full"]
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  graph-cache:
+  caddy-data:

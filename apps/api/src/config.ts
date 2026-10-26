@@ -9,6 +9,8 @@ export interface ApiConfig {
   routeRateLimit: number;
   /** Каталог собранного веб-приложения; если задан, API отдаёт и его. */
   webDir?: string;
+  /** Каталог с файлами PMTiles; отдаётся по адресу /tiles/ (ADR-0015). */
+  tilesDir?: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -21,5 +23,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     routeRateLimit: Number(env.ROUTE_RATE_LIMIT ?? 60),
   };
   if (env.WEB_DIR) config.webDir = env.WEB_DIR;
+  if (env.TILES_DIR) config.tilesDir = env.TILES_DIR;
   return config;
 }

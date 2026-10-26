@@ -2,14 +2,26 @@
 
 Русскоязычный веб-сервис для планирования мотопутешествий: маршрут, топливо, бюджет, ночёвки по дням, погода и светлое время суток в одном потоке.
 
-> Статус: **спринт 1**: каркас монорепозитория и первые расчёты в `packages/calc`.
+> Статус: **v0.1 собрана, ждёт данных и сервера владельца** (docs/deploy.md). Маршрут, дни, топливо, местное время, GPX, ссылка, PDF путевой лист, админка.
 
 ## Разработка
-Нужны Node.js 22 и pnpm 10.
+Нужны Node.js 22 и pnpm 10 (для маршрутов ещё Java 21).
 ```
 pnpm install
-pnpm check   # линт, форматирование, типы, тесты
+pnpm check                          # линт, форматирование, типы, тесты, проверка data/
+pnpm --filter @versta/web dev       # сайт на http://localhost:5173, API ожидается на :8080
+pnpm --filter @versta/api dev       # API (GRAPHHOPPER_URL, PHOTON_URL)
+pnpm --filter @versta/web e2e       # браузерные тесты (Playwright)
 ```
+
+| Каталог | Что внутри |
+|---|---|
+| `apps/web` | Сайт, планировщик, PDF, админка `/admin/` |
+| `apps/api` | API: маршрут, адреса, часовые пояса |
+| `packages/calc` | Расчёты: время, топливо, дни |
+| `packages/route-format` | Ссылка с маршрутом, GPX |
+| `data/` | Настройки (правятся через админку) |
+| `infra/` | Docker Compose, GraphHopper, Photon, Caddy |
 > Рабочее название репозитория: `moto-route-planner` (можно заменить).
 
 ## Зачем
@@ -35,6 +47,9 @@ pnpm check   # линт, форматирование, типы, тесты
 | [docs/14-trip-parameters-spec.md](docs/14-trip-parameters-spec.md) | Параметры поездки: группа, мотоцикл, часовые пояса |
 | [docs/15-readiness-review-2026-10-21.md](docs/15-readiness-review-2026-10-21.md) | Готовность к разработке и вопросы владельцу |
 | [docs/design/design-system.md](docs/design/design-system.md) | Дизайн-система: токены и компоненты |
+| [docs/deploy.md](docs/deploy.md) | Развёртывание на своём сервере |
+| [docs/admin.md](docs/admin.md) | Админка: инструкция владельцу |
+| [docs/spikes/](docs/spikes/) | Отчёты спайков |
 | [docs/11-pdf-report-spec.md](docs/11-pdf-report-spec.md) | PDF путевой лист |
 | [BACKLOG.md](BACKLOG.md) | Приоритизированный бэклог |
 | [docs/sprints/](docs/sprints/) | Планы спринтов |
