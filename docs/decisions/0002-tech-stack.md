@@ -17,3 +17,6 @@ Valhalla или OSRM для маршрутизации; Python FastAPI на бэ
 
 ## Результаты S-01 (2026-10-26)
 GraphHopper 11.0: избегание грунта, пометки паромов и платных участков, режим «извилистые» работают на синтетической сети, проверка в CI. Память для России не измерена. Отчёт: `docs/spikes/s01-graphhopper.md`.
+
+## Что используется в v0.1 (2026-10-26)
+TypeScript, React 19 + Vite 8, MapLibre GL 6 + PMTiles (ADR-0015), Fastify 5, GraphHopper 11, Photon, pdf-lib (ADR-0014). PostgreSQL/PostGIS в v0.1 не нужен: маршруты не хранятся, POI появятся в v0.3.

@@ -1,0 +1,13 @@
+{
+  "name": "Верста — планировщик мотопутешествий",
+  "short_name": "Верста",
+  "lang": "ru",
+  "start_url": "/plan",
+  "display": "standalone",
+  "background_color": "#F6EFDF",
+  "theme_color": "#3C6B4B",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

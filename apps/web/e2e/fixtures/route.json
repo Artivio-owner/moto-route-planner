@@ -1,0 +1,29 @@
+{
+  "legs": [
+    {
+      "distanceKm": 131.3738823948757,
+      "segments": [
+        { "distanceKm": 48.46140364328731, "roadClass": "regional" },
+        { "distanceKm": 25.511516380034653, "roadClass": "motorway", "toll": true },
+        { "distanceKm": 12.755771226526184, "roadClass": "regional" },
+        {
+          "distanceKm": 12.755771226526184,
+          "roadClass": "local",
+          "ferry": true,
+          "fixedDurationH": 0.9111252777777782
+        },
+        { "distanceKm": 12.75577122652573, "roadClass": "regional" },
+        { "distanceKm": 19.13364869197564, "roadClass": "trunk" }
+      ],
+      "geometry": [
+        [37, 55],
+        [37.1, 55.15],
+        [37.2, 55],
+        [38.7, 55]
+      ],
+      "geometryKm": [0, 17.85281620838079, 35.70563241676158, 131.3738823948757]
+    }
+  ],
+  "zones": [{ "fromKm": 0, "timeZone": "Europe/Moscow" }],
+  "distanceKm": 131.3738823948757
+}

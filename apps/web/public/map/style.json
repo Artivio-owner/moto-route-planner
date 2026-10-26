@@ -1,0 +1,142 @@
+{
+  "version": 8,
+  "name": "Верста: бумажная карта",
+  "metadata": {
+    "note": "Свой стиль в палитре ADR-0009 для тайлов в схеме Protomaps (PMTiles). На реальных тайлах не проверен: тайлы готовит владелец (docs/deploy.md)"
+  },
+  "glyphs": "/map/glyphs/{fontstack}/{range}.pbf",
+  "sources": {
+    "base": {
+      "type": "vector",
+      "url": "pmtiles:///tiles/region.pmtiles",
+      "attribution": "© участники OpenStreetMap"
+    }
+  },
+  "layers": [
+    { "id": "background", "type": "background", "paint": { "background-color": "#EFE6D2" } },
+    {
+      "id": "earth",
+      "type": "fill",
+      "source": "base",
+      "source-layer": "earth",
+      "paint": { "fill-color": "#F6EFDF" }
+    },
+    {
+      "id": "landcover",
+      "type": "fill",
+      "source": "base",
+      "source-layer": "landcover",
+      "paint": {
+        "fill-color": [
+          "match",
+          ["get", "kind"],
+          ["forest", "wood"],
+          "#C6D8B0",
+          ["grassland", "scrub", "farmland"],
+          "#DDE8CE",
+          "#E8E2CC"
+        ],
+        "fill-opacity": 0.8
+      }
+    },
+    {
+      "id": "landuse-park",
+      "type": "fill",
+      "source": "base",
+      "source-layer": "landuse",
+      "filter": [
+        "in",
+        ["get", "kind"],
+        ["literal", ["park", "forest", "wood", "nature_reserve", "national_park"]]
+      ],
+      "paint": { "fill-color": "#C6D8B0", "fill-opacity": 0.6 }
+    },
+    {
+      "id": "landuse-urban",
+      "type": "fill",
+      "source": "base",
+      "source-layer": "landuse",
+      "filter": [
+        "in",
+        ["get", "kind"],
+        ["literal", ["residential", "industrial", "commercial", "retail"]]
+      ],
+      "paint": { "fill-color": "#EADFC6", "fill-opacity": 0.7 }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "base",
+      "source-layer": "water",
+      "paint": { "fill-color": "#B9D3D6" }
+    },
+    {
+      "id": "boundary-country",
+      "type": "line",
+      "source": "base",
+      "source-layer": "boundaries",
+      "filter": ["<=", ["coalesce", ["get", "kind_detail"], 2], 2],
+      "paint": { "line-color": "#8C7F66", "line-width": 1.2, "line-dasharray": [3, 2] }
+    },
+    {
+      "id": "roads-minor",
+      "type": "line",
+      "source": "base",
+      "source-layer": "roads",
+      "minzoom": 11,
+      "filter": ["in", ["get", "kind"], ["literal", ["minor_road", "other"]]],
+      "paint": {
+        "line-color": "#FFFBF2",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 11, 0.5, 16, 4]
+      }
+    },
+    {
+      "id": "roads-medium",
+      "type": "line",
+      "source": "base",
+      "source-layer": "roads",
+      "minzoom": 8,
+      "filter": ["==", ["get", "kind"], "medium_road"],
+      "paint": {
+        "line-color": "#FFFBF2",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 16, 6]
+      }
+    },
+    {
+      "id": "roads-major",
+      "type": "line",
+      "source": "base",
+      "source-layer": "roads",
+      "filter": ["==", ["get", "kind"], "major_road"],
+      "paint": {
+        "line-color": "#F2D7A8",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 5, 0.6, 16, 8]
+      }
+    },
+    {
+      "id": "roads-highway",
+      "type": "line",
+      "source": "base",
+      "source-layer": "roads",
+      "filter": ["==", ["get", "kind"], "highway"],
+      "paint": {
+        "line-color": "#E9B97A",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 4, 0.8, 16, 10]
+      }
+    },
+    {
+      "id": "places",
+      "type": "symbol",
+      "source": "base",
+      "source-layer": "places",
+      "filter": ["in", ["get", "kind"], ["literal", ["locality", "region", "country"]]],
+      "layout": {
+        "text-field": ["coalesce", ["get", "name:ru"], ["get", "name"]],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 4, 11, 12, 16],
+        "text-max-width": 8
+      },
+      "paint": { "text-color": "#2E2B25", "text-halo-color": "#F6EFDF", "text-halo-width": 1.5 }
+    }
+  ]
+}
