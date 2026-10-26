@@ -185,11 +185,15 @@ export function buildServer(deps: Dependencies): FastifyInstance {
   );
 
   if (deps.config.webDir) {
-    app.register(fastifyStatic, { root: deps.config.webDir, wildcard: false });
-    // Одностраничное приложение: неизвестные пути отдают index.html.
+    app.register(fastifyStatic, { root: deps.config.webDir });
+    // Одностраничное приложение: страницы без расширения отдают index.html, отсутствующие файлы дают 404.
     app.setNotFoundHandler((request, reply) => {
-      if (request.url.startsWith("/api/")) {
+      const path = request.url.split(/[?#]/)[0] ?? "";
+      if (path.startsWith("/api/")) {
         return reply.status(404).send({ error: "not_found", message: "Нет такого адреса API" });
+      }
+      if (request.method !== "GET" || /\.[a-z0-9]+$/i.test(path)) {
+        return reply.status(404).send({ error: "not_found", message: "Файл не найден" });
       }
       return reply.sendFile("index.html");
     });

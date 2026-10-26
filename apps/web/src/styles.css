@@ -1,0 +1,538 @@
+/* Дизайн-система «Верста» v0.1: docs/design/design-system.md, токены design-tokens.json */
+:root {
+  --bg: #f6efdf;
+  --surface: #fffbf2;
+  --ink: #2e2b25;
+  --muted: #6a6354;
+  --line: #e3d8bf;
+  --primary: #3c6b4b;
+  --on-primary: #ffffff;
+  --accent: #e0892f;
+  --on-accent: #2e1a05;
+  --map: #dde8ce;
+  --land: #c6d8b0;
+  --danger: #a3402a;
+  --warn-bg: #fdf0dc;
+  --radius-card: 18px;
+  --radius-input: 12px;
+  --gap: 12px;
+  --pad: 18px;
+  --font: "Rubik", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 15px/1.45 var(--font);
+}
+
+a {
+  color: var(--primary);
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 700;
+  margin: 0 0 8px;
+  line-height: 1.2;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Шапка */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 32px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.logo {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo img {
+  width: 32px;
+  height: 32px;
+}
+.header nav {
+  margin-left: auto;
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.header nav a {
+  color: var(--ink);
+  text-decoration: none;
+}
+.header nav a:hover {
+  color: var(--primary);
+}
+
+/* Раскладка планировщика: параметры 330 px, карта, путевой лист 300 px */
+.planner {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr) 320px;
+  gap: 20px;
+  padding: 20px 32px;
+  align-items: start;
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+.map-column {
+  position: sticky;
+  top: 12px;
+}
+@media (max-width: 1100px) {
+  .planner {
+    grid-template-columns: 330px minmax(0, 1fr);
+  }
+  .sheet-column {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 760px) {
+  .planner {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+  .header {
+    padding: 12px;
+    flex-wrap: wrap;
+  }
+  .header nav {
+    margin-left: 0;
+    width: 100%;
+    gap: 14px;
+    font-size: 14px;
+  }
+  .map-column {
+    position: static;
+  }
+}
+
+/* Карточка */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: var(--pad);
+}
+.card > h2 {
+  font-size: 19px;
+}
+.card details > summary {
+  cursor: pointer;
+  font-weight: 500;
+  padding: 4px 0;
+}
+
+/* Поля */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+}
+.field > span,
+.label {
+  color: var(--muted);
+  font-size: 13px;
+}
+.input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-input);
+}
+.input:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(60, 107, 75, 0.2);
+}
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.hint {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+.mark {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 8px;
+}
+.mark.edited {
+  color: var(--on-accent);
+  background: var(--warn-bg);
+  border-color: var(--accent);
+}
+
+/* Кнопки */
+.btn {
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: var(--radius-input);
+  border: 1px solid transparent;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--primary);
+  color: var(--on-primary);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn.accent {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.btn.ghost {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--line);
+  font-weight: 500;
+}
+.btn.small {
+  min-height: 36px;
+  padding: 6px 10px;
+}
+.icon-btn {
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+}
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+/* Чипы */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+}
+.chip[aria-pressed="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+/* Точки маршрута */
+.points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.point {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 6px;
+  align-items: start;
+}
+.point-dot {
+  margin-top: 13px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 3px solid var(--primary);
+  background: var(--surface);
+}
+.point-dot.end {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.point-tools {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  justify-content: flex-end;
+}
+.point-tools .icon-btn {
+  min-width: 30px;
+  min-height: 30px;
+}
+.point-extra {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.combo {
+  position: relative;
+}
+.suggestions {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-input);
+  box-shadow: 0 8px 24px rgba(46, 43, 37, 0.12);
+}
+.suggestions li {
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.suggestions li[aria-selected="true"],
+.suggestions li:hover {
+  background: var(--bg);
+}
+.suggestions small {
+  display: block;
+  color: var(--muted);
+}
+
+/* Карта */
+.map-wrap {
+  position: relative;
+  height: calc(100vh - 120px);
+  min-height: 420px;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--map);
+}
+@media (max-width: 760px) {
+  .map-wrap {
+    height: 60vh;
+  }
+}
+.map {
+  width: 100%;
+  height: 100%;
+}
+.map-status {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.map-status > div {
+  pointer-events: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+}
+.map-marker {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid var(--primary);
+  background: var(--surface);
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 12px;
+  display: grid;
+  place-items: center;
+  cursor: grab;
+}
+.map-marker.end {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.night-marker {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 700;
+  border: 2px solid var(--surface);
+}
+
+/* Путевой лист */
+.summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+  margin: 8px 0 12px;
+}
+.figure {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.figure-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+.days {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.day {
+  border-left: 4px solid var(--accent);
+  padding: 6px 0 6px 10px;
+}
+.day-title {
+  font-weight: 700;
+}
+.day-route {
+  color: var(--muted);
+}
+.day-meta {
+  font-size: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+}
+.warning {
+  background: var(--warn-bg);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-input);
+  padding: 8px 10px;
+  font-size: 13px;
+  margin-top: 6px;
+}
+.error {
+  background: #fbe9e4;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: var(--radius-input);
+  padding: 10px 12px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.empty {
+  color: var(--muted);
+}
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.history li + li {
+  border-top: 1px solid var(--line);
+}
+.history button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 0;
+  cursor: pointer;
+}
+.history small {
+  display: block;
+  color: var(--muted);
+}
+
+/* Подвал */
+.footer {
+  padding: 24px 32px 40px;
+  color: var(--muted);
+  font-size: 13px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+.footer p {
+  margin: 4px 0;
+}
+
+/* Страницы текста */
+.page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 20px 48px;
+}
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--surface);
+  padding: 10px 18px;
+  border-radius: 999px;
+  z-index: 50;
+}

@@ -15,7 +15,7 @@ describe("валюты", () => {
   });
 
   it("формат с неразрывным пробелом", () => {
-    expect(formatMoney(12345.6, "RUB")).toBe("12 346 ₽");
-    expect(formatMoney(100, "USD")).toBe("100 $");
+    expect(formatMoney(12345.6, "RUB")).toBe("12\u00a0346\u00a0₽");
+    expect(formatMoney(100, "USD")).toBe("100\u00a0$");
   });
 });

@@ -114,3 +114,20 @@ describe("поиск адресов", () => {
     expect((await app.inject({ method: "GET", url: "/api/geocode?q=Т" })).statusCode).toBe(400);
   });
 });
+
+describe("раздача веб-приложения", () => {
+  it("страницы отдают index.html, отсутствующие файлы 404", async () => {
+    const { mkdtempSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const dir = mkdtempSync(`${tmpdir()}/versta-web-`);
+    writeFileSync(`${dir}/index.html`, "<!doctype html><title>Верста</title>");
+    const geocoder: GeocoderClient = { search: async () => [], reverse: async () => null };
+    const graphhopper: GraphHopperClient = { leg: async () => fakeLeg(1) };
+    const app = buildServer({ config: { routeRateLimit: 10, webDir: dir }, graphhopper, geocoder });
+    const page = await app.inject({ method: "GET", url: "/plan" });
+    expect(page.statusCode).toBe(200);
+    expect(page.body).toContain("Верста");
+    expect((await app.inject({ method: "GET", url: "/assets/old-123.js" })).statusCode).toBe(404);
+    expect((await app.inject({ method: "GET", url: "/api/nope" })).json().error).toBe("not_found");
+  });
+});
