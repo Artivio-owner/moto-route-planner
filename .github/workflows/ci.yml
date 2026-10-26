@@ -25,3 +25,35 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm validate:data
+
+  routing:
+    name: Мото-модели GraphHopper
+    runs-on: ubuntu-latest
+    env:
+      GRAPHHOPPER_VERSION: "11.0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/cache@v4
+        with:
+          path: graphhopper.jar
+          key: graphhopper-${{ env.GRAPHHOPPER_VERSION }}
+      - name: Скачать GraphHopper
+        run: |
+          test -f graphhopper.jar || curl -fsSL -o graphhopper.jar \
+            "https://repo1.maven.org/maven2/com/graphhopper/graphhopper-web/${GRAPHHOPPER_VERSION}/graphhopper-web-${GRAPHHOPPER_VERSION}.jar"
+      - name: Запустить на синтетической сети
+        working-directory: infra/graphhopper
+        run: |
+          python3 test/make_synthetic.py > /tmp/synthetic.osm
+          java -Xmx1g -Ddw.graphhopper.datareader.file=/tmp/synthetic.osm \
+            -Ddw.graphhopper.graph.location=/tmp/graph -jar "$GITHUB_WORKSPACE/graphhopper.jar" server config.yml > /tmp/gh.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null localhost:8989/info && break; sleep 2; done
+      - name: Проверить профили
+        run: python3 infra/graphhopper/test/check_profiles.py
+      - name: Журнал GraphHopper при ошибке
+        if: failure()
+        run: tail -50 /tmp/gh.log
