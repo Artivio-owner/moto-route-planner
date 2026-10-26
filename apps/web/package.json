@@ -6,11 +6,12 @@
   "description": "Веб-приложение «Верста»",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node ../../scripts/validate-data.js && node ../../scripts/copy-cms.js && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "predev": "node ../../scripts/copy-cms.js"
   },
   "dependencies": {
     "@fontsource/rubik": "5.3.0",
@@ -24,6 +25,7 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@sveltia/cms": "0.252.0",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",

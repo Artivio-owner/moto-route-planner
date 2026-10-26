@@ -1,0 +1,330 @@
+# Админка «Версты» (ADR-0013, вариант C): правит файлы data/ в репозитории.
+# Вход: персональный токен GitHub владельца (инструкция: docs/admin.md).
+backend:
+  name: github
+  repo: Artivio-owner/moto-route-planner
+  branch: main
+  commit_messages:
+    update: "chore(data): {{collection}} «{{slug}}» через админку"
+
+media_folder: apps/web/public/admin/media
+public_folder: /admin/media
+
+collections:
+  - name: settings
+    label: Настройки сервиса
+    description: После сохранения сайт обновится после пересборки. Все цены показываются пользователю с пометкой «ориентировочно».
+    files:
+      - name: fuel-prices
+        label: Цены топлива
+        file: data/fuel-prices.json
+        format: json
+        fields:
+          - {
+              name: updated,
+              label: Дата обновления,
+              widget: datetime,
+              type: date,
+              format: YYYY-MM-DD,
+            }
+          - { name: note, label: Примечание, widget: text, required: false }
+          - name: defaultFuel
+            label: Топливо по умолчанию
+            widget: select
+            options: ["92", "95", "100"]
+          - name: countries
+            label: Страны
+            widget: object
+            fields:
+              - name: RU
+                label: Россия, ₽ за литр
+                widget: object
+                fields:
+                  - {
+                      name: "92",
+                      label: АИ-92,
+                      widget: number,
+                      value_type: float,
+                      min: 1,
+                      max: 1000,
+                      required: false,
+                    }
+                  - {
+                      name: "95",
+                      label: АИ-95,
+                      widget: number,
+                      value_type: float,
+                      min: 1,
+                      max: 1000,
+                    }
+                  - {
+                      name: "100",
+                      label: АИ-100,
+                      widget: number,
+                      value_type: float,
+                      min: 1,
+                      max: 1000,
+                      required: false,
+                    }
+
+      - name: exchange-rate
+        label: Курс доллара
+        file: data/exchange-rate.json
+        format: json
+        fields:
+          - {
+              name: updated,
+              label: Дата обновления,
+              widget: datetime,
+              type: date,
+              format: YYYY-MM-DD,
+            }
+          - { name: note, label: Примечание, widget: text, required: false }
+          - {
+              name: rubPerUsd,
+              label: Рублей за доллар,
+              widget: number,
+              value_type: float,
+              min: 10,
+              max: 1000,
+            }
+
+      - name: moto-presets
+        label: Пресеты мотоцикла
+        file: data/moto-presets.json
+        format: json
+        fields:
+          - { name: note, label: Примечание, widget: text, required: false }
+          - name: presets
+            label: Пресеты
+            widget: list
+            summary: "{{name}}: бак {{tankL}} л, расход {{consumptionLPer100Km}}"
+            fields:
+              - {
+                  name: id,
+                  label: Код (латиницей),
+                  widget: string,
+                  pattern: ["^[a-z][a-z0-9-]*$", "Латиница в нижнем регистре, цифры и дефис"],
+                }
+              - { name: name, label: Название, widget: string }
+              - { name: tankL, label: "Бак, л", widget: number, value_type: float, min: 3, max: 60 }
+              - {
+                  name: consumptionLPer100Km,
+                  label: "Расход, л/100 км",
+                  widget: number,
+                  value_type: float,
+                  min: 1,
+                  max: 20,
+                }
+              - name: speeds
+                label: Скорости, км/ч
+                widget: object
+                fields:
+                  - {
+                      name: motorway,
+                      label: Автомагистраль,
+                      widget: number,
+                      value_type: int,
+                      min: 10,
+                      max: 150,
+                    }
+                  - {
+                      name: trunk,
+                      label: Магистраль,
+                      widget: number,
+                      value_type: int,
+                      min: 10,
+                      max: 150,
+                    }
+                  - {
+                      name: regional,
+                      label: Региональная,
+                      widget: number,
+                      value_type: int,
+                      min: 10,
+                      max: 150,
+                    }
+                  - {
+                      name: local,
+                      label: Местная,
+                      widget: number,
+                      value_type: int,
+                      min: 10,
+                      max: 150,
+                    }
+              - {
+                  name: dailyLimitKm,
+                  label: "Дневной лимит, км",
+                  widget: number,
+                  value_type: int,
+                  min: 50,
+                  max: 2000,
+                }
+              - {
+                  name: dailyLimitH,
+                  label: "Дневной лимит, ч",
+                  widget: number,
+                  value_type: float,
+                  min: 1,
+                  max: 20,
+                }
+              - {
+                  name: heavyDayKm,
+                  label: "Тяжёлый день от, км",
+                  widget: number,
+                  value_type: int,
+                  min: 50,
+                  max: 2000,
+                }
+              - { name: allowUnpaved, label: Грунт разрешён по умолчанию, widget: boolean }
+
+      - name: trip-defaults
+        label: Значения по умолчанию
+        file: data/trip-defaults.json
+        format: json
+        fields:
+          - { name: note, label: Примечание, widget: text, required: false }
+          - { name: presetId, label: Пресет по умолчанию (код), widget: string }
+          - {
+              name: people,
+              label: Людей,
+              widget: select,
+              options: [{ label: "1", value: 1 }, { label: "2", value: 2 }],
+            }
+          - {
+              name: motorcycles,
+              label: Мотоциклов,
+              widget: select,
+              options: [{ label: "1", value: 1 }, { label: "2", value: 2 }],
+            }
+          - {
+              name: currency,
+              label: Валюта,
+              widget: select,
+              options: [{ label: Рубли, value: RUB }, { label: Доллары, value: USD }],
+            }
+          - { name: avoidUnpaved, label: Избегать грунта, widget: boolean }
+          - name: split
+            label: Разбивка по дням
+            widget: object
+            fields:
+              - {
+                  name: mode,
+                  label: Режим,
+                  widget: select,
+                  options: [{ label: По километрам, value: km }, { label: Вручную, value: manual }],
+                }
+              - {
+                  name: maxKmPerDay,
+                  label: Км в день (для «Свой»),
+                  widget: number,
+                  value_type: int,
+                  min: 50,
+                  max: 2000,
+                }
+          - name: stops
+            label: Остановки
+            widget: object
+            fields:
+              - {
+                  name: dayStart,
+                  label: Старт дня (ЧЧ:ММ),
+                  widget: string,
+                  pattern: ["^([01][0-9]|2[0-3]):[0-5][0-9]$", "Формат ЧЧ:ММ"],
+                }
+              - {
+                  name: fuelStopMin,
+                  label: "Заправка, мин",
+                  widget: number,
+                  value_type: int,
+                  min: 0,
+                  max: 120,
+                }
+              - {
+                  name: lunchMin,
+                  label: "Обед, мин",
+                  widget: number,
+                  value_type: int,
+                  min: 0,
+                  max: 180,
+                }
+              - {
+                  name: lunchAfterDrivingH,
+                  label: "Обед, если в пути от, ч",
+                  widget: number,
+                  value_type: float,
+                  min: 0,
+                  max: 12,
+                }
+          - name: history
+            label: История в браузере
+            widget: object
+            fields:
+              - {
+                  name: maxEntries,
+                  label: Записей,
+                  widget: number,
+                  value_type: int,
+                  min: 1,
+                  max: 100,
+                }
+              - {
+                  name: keepDays,
+                  label: "Хранить, дней",
+                  widget: number,
+                  value_type: int,
+                  min: 1,
+                  max: 365,
+                }
+          - {
+              name: longRouteWarningKm,
+              label: "Предупреждать о длинном маршруте от, км",
+              widget: number,
+              value_type: int,
+              min: 100,
+            }
+
+      - name: countries
+        label: Страны покрытия
+        file: data/countries.json
+        format: json
+        fields:
+          - name: countries
+            label: Страны
+            widget: list
+            summary: "{{name}} ({{code}}), с {{since}}"
+            fields:
+              - {
+                  name: code,
+                  label: Код страны,
+                  widget: string,
+                  pattern: ["^[A-Z]{2}$", "Две заглавные латинские буквы"],
+                }
+              - { name: name, label: Название, widget: string }
+              - {
+                  name: currency,
+                  label: Валюта (код),
+                  widget: string,
+                  pattern: ["^[A-Z]{3}$", "Три заглавные латинские буквы"],
+                }
+              - {
+                  name: since,
+                  label: С версии,
+                  widget: select,
+                  options: ["v0.1", "v0.2", "v0.3", "later"],
+                }
+
+      - name: site
+        label: Контакты и ссылки
+        file: data/site.json
+        format: json
+        fields:
+          - { name: name, label: Название, widget: string }
+          - {
+              name: email,
+              label: E-mail,
+              widget: string,
+              pattern: ["^[^@\\s]+@[^@\\s]+$", "Адрес e-mail"],
+            }
+          - { name: github, label: GitHub, widget: string }
+          - { name: issues, label: Сообщить об ошибке (ссылка), widget: string }

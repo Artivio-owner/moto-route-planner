@@ -2,3 +2,6 @@
 *.md
 docs/
 pnpm-lock.yaml
+dist/
+apps/web/public/admin/vendor/
+test-results/
