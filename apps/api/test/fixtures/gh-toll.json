@@ -1,0 +1,55 @@
+{
+  "hints": { "visited_nodes.sum": 10, "visited_nodes.average": 10.0 },
+  "info": { "copyrights": ["GraphHopper", "OpenStreetMap contributors"], "took": 1 },
+  "paths": [
+    {
+      "distance": 61217.095,
+      "weight": 3366.887506,
+      "time": 3366887,
+      "transfers": 0,
+      "legs": [],
+      "points_encoded": false,
+      "bbox": [37.0, 55.0, 37.6, 55.15],
+      "points": {
+        "type": "LineString",
+        "coordinates": [
+          [37.0, 55.0],
+          [37.1, 55.15],
+          [37.2, 55.0],
+          [37.4, 55.0],
+          [37.6, 55.0]
+        ]
+      },
+      "details": {
+        "road_environment": [[0, 4, "road"]],
+        "road_class": [
+          [0, 3, "secondary"],
+          [3, 4, "motorway"]
+        ],
+        "time": [
+          [0, 2, 2142335],
+          [2, 3, 765345],
+          [3, 4, 459207]
+        ],
+        "toll": [
+          [0, 3, "no"],
+          [3, 4, "all"]
+        ],
+        "street_name": [
+          [0, 2, "Объезд"],
+          [2, 3, null],
+          [3, 4, "Платная"]
+        ]
+      },
+      "ascend": 0.0,
+      "descend": 0.0,
+      "snapped_waypoints": {
+        "type": "LineString",
+        "coordinates": [
+          [37.0, 55.0],
+          [37.6, 55.0]
+        ]
+      }
+    }
+  ]
+}
