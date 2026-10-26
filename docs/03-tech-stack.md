@@ -55,3 +55,6 @@ infra/          # docker-compose, конфиги GraphHopper
 
 ## Инструменты разработки (2026-10-21, F-02)
 pnpm workspaces, TypeScript 5.9 (strict), ESLint с typescript-eslint, Prettier (документы `*.md` не форматирует), Vitest, CI на GitHub Actions: `.github/workflows/ci.yml`.
+
+## API (2026-10-26)
+`apps/api` на Fastify 5: `POST /api/route` (GraphHopper, отрезки с кэшем, пояса), `GET /api/geocode` и `/api/reverse` (Photon), ограничение частоты `@fastify/rate-limit`, раздача собранного веб-приложения при `WEB_DIR`. Сборка одним файлом через esbuild. Часовые пояса: `@photostructure/tz-lookup` (CC0).

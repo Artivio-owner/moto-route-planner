@@ -1,0 +1,56 @@
+{
+  "hints": { "visited_nodes.sum": 9, "visited_nodes.average": 9.0 },
+  "info": { "copyrights": ["GraphHopper", "OpenStreetMap contributors"], "took": 1 },
+  "paths": [
+    {
+      "distance": 19133.633,
+      "weight": 3662.723767,
+      "time": 3662723,
+      "transfers": 0,
+      "legs": [],
+      "points_encoded": false,
+      "bbox": [37.95, 55.0, 38.25, 55.0],
+      "points": {
+        "type": "LineString",
+        "coordinates": [
+          [37.95, 55.0],
+          [38.0, 55.0],
+          [38.2, 55.0],
+          [38.25, 55.0]
+        ]
+      },
+      "details": {
+        "road_environment": [
+          [0, 1, "road"],
+          [1, 2, "ferry"],
+          [2, 3, "road"]
+        ],
+        "road_class": [
+          [0, 1, "secondary"],
+          [1, 2, "other"],
+          [2, 3, "secondary"]
+        ],
+        "time": [
+          [0, 1, 191336],
+          [1, 2, 3280051],
+          [2, 3, 191336]
+        ],
+        "toll": [[0, 3, "no"]],
+        "street_name": [
+          [0, 1, null],
+          [1, 2, "Паром"],
+          [2, 3, null]
+        ]
+      },
+      "ascend": 0.0,
+      "descend": 0.0,
+      "snapped_waypoints": {
+        "type": "LineString",
+        "coordinates": [
+          [37.95, 55.0],
+          [38.25, 55.0]
+        ]
+      }
+    }
+  ]
+}

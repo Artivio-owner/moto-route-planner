@@ -1,0 +1,10 @@
+{
+  "message": "Point 1 is out of bounds: 59.0,40.6, the bounds are: 37.0,38.8,55.0,55.0",
+  "hints": [
+    {
+      "message": "Point 1 is out of bounds: 59.0,40.6, the bounds are: 37.0,38.8,55.0,55.0",
+      "details": "com.graphhopper.util.exceptions.PointOutOfBoundsException",
+      "point_index": 1
+    }
+  ]
+}

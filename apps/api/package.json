@@ -1,0 +1,26 @@
+{
+  "name": "@versta/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "API «Версты»: маршрут через GraphHopper, адреса через Photon, часовые пояса",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/server.js --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\"",
+    "start": "node dist/server.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/rate-limit": "11.2.1",
+    "@fastify/static": "10.1.7",
+    "@photostructure/tz-lookup": "11.7.0",
+    "@versta/calc": "workspace:*",
+    "fastify": "5.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "esbuild": "0.28.2",
+    "tsx": "4.23.15"
+  }
+}

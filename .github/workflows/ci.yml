@@ -54,6 +54,18 @@ jobs:
           for i in $(seq 1 60); do curl -sf -o /dev/null localhost:8989/info && break; sleep 2; done
       - name: Проверить профили
         run: python3 infra/graphhopper/test/check_profiles.py
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Сквозная проверка API
+        run: |
+          pnpm --filter @versta/api build
+          PORT=8080 GRAPHHOPPER_URL=http://localhost:8989 node apps/api/dist/server.js > /tmp/api.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf -o /dev/null localhost:8080/api/health && break; sleep 1; done
+          python3 apps/api/test/e2e_check.py
       - name: Журнал GraphHopper при ошибке
         if: failure()
         run: tail -50 /tmp/gh.log
