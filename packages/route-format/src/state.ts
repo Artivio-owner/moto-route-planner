@@ -1,0 +1,229 @@
+// Состояние маршрута в ссылке: ADR-0005, задачи X-02 и X-09.
+// Сервер маршруты не хранит, поэтому всё, что нужно для пересчёта, лежит в адресе
+// после «#»: эта часть не уходит на сервер и не попадает в его журналы.
+
+export const STATE_VERSION = 1;
+
+export interface RoutePoint {
+  name: string;
+  lat: number;
+  lon: number;
+  /** Ночёвка в этой точке (ручная разбивка по дням). */
+  overnight?: boolean;
+}
+
+export interface ProfileState {
+  presetId: string;
+  tankL: number;
+  consumptionLPer100Km: number;
+  speeds: { motorway: number; trunk: number; regional: number; local: number };
+  dailyLimitKm: number;
+  dailyLimitH: number;
+  heavyDayKm: number;
+}
+
+export interface RouteState {
+  points: RoutePoint[];
+  /** Маршрут с возвратом: флаг, а не новые точки (ADR-0011). */
+  roundTrip: boolean;
+  avoidUnpaved: boolean;
+  /** Дата старта ГГГГ-ММ-ДД. */
+  startDate: string;
+  people: 1 | 2;
+  motorcycles: 1 | 2;
+  profile: ProfileState;
+  split: { mode: "km"; maxKmPerDay: number } | { mode: "manual" };
+  currency: "RUB" | "USD";
+  fuelType: "92" | "95" | "100";
+  /** Цена, если пользователь её изменил; иначе берётся значение по умолчанию. */
+  fuelPriceRub?: number;
+  rubPerUsd?: number;
+}
+
+const COORD_SCALE = 1e5; // ≈ 1 м
+
+/**
+ * Компактный вид: короткие ключи, координаты целыми числами с разностями
+ * от предыдущей точки. Порядок полей в массивах фиксирован версией.
+ */
+type Packed = [
+  version: number,
+  points: [name: string, dLat: number, dLon: number, overnight: 0 | 1][],
+  flags: number,
+  startDate: string,
+  people: number,
+  motorcycles: number,
+  profile: [string, number, number, number, number, number, number, number, number, number],
+  split: number,
+  currency: number,
+  fuelType: string,
+  fuelPriceRub: number | null,
+  rubPerUsd: number | null,
+];
+
+function pack(state: RouteState): Packed {
+  let prevLat = 0;
+  let prevLon = 0;
+  const points = state.points.map((p): [string, number, number, 0 | 1] => {
+    const lat = Math.round(p.lat * COORD_SCALE);
+    const lon = Math.round(p.lon * COORD_SCALE);
+    const packed: [string, number, number, 0 | 1] = [
+      p.name,
+      lat - prevLat,
+      lon - prevLon,
+      p.overnight ? 1 : 0,
+    ];
+    prevLat = lat;
+    prevLon = lon;
+    return packed;
+  });
+  const { profile: pr } = state;
+  return [
+    STATE_VERSION,
+    points,
+    (state.roundTrip ? 1 : 0) | (state.avoidUnpaved ? 2 : 0),
+    state.startDate,
+    state.people,
+    state.motorcycles,
+    [
+      pr.presetId,
+      pr.tankL,
+      pr.consumptionLPer100Km,
+      pr.speeds.motorway,
+      pr.speeds.trunk,
+      pr.speeds.regional,
+      pr.speeds.local,
+      pr.dailyLimitKm,
+      pr.dailyLimitH,
+      pr.heavyDayKm,
+    ],
+    state.split.mode === "km" ? state.split.maxKmPerDay : 0,
+    state.currency === "USD" ? 1 : 0,
+    state.fuelType,
+    state.fuelPriceRub ?? null,
+    state.rubPerUsd ?? null,
+  ];
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function unpack(raw: unknown): RouteState {
+  if (!Array.isArray(raw) || raw[0] !== STATE_VERSION || raw.length !== 12) {
+    throw new Error("Ссылка повреждена или создана другой версией сервиса");
+  }
+  const [
+    ,
+    points,
+    flags,
+    startDate,
+    people,
+    motorcycles,
+    profile,
+    split,
+    currency,
+    fuelType,
+    price,
+    rate,
+  ] = raw as Packed;
+  if (!Array.isArray(points) || !Array.isArray(profile) || profile.length !== 10) {
+    throw new Error("Ссылка повреждена");
+  }
+  let lat = 0;
+  let lon = 0;
+  const decodedPoints = points.map(([name, dLat, dLon, overnight]) => {
+    if (typeof name !== "string" || !isFiniteNumber(dLat) || !isFiniteNumber(dLon)) {
+      throw new Error("Ссылка повреждена: точка маршрута");
+    }
+    lat += dLat;
+    lon += dLon;
+    const point: RoutePoint = { name, lat: lat / COORD_SCALE, lon: lon / COORD_SCALE };
+    if (overnight === 1) point.overnight = true;
+    return point;
+  });
+  const [presetId, tankL, consumption, motorway, trunk, regional, local, limitKm, limitH, heavyKm] =
+    profile;
+  const numbers = [tankL, consumption, motorway, trunk, regional, local, limitKm, limitH, heavyKm];
+  if (typeof presetId !== "string" || !numbers.every(isFiniteNumber) || !isFiniteNumber(split)) {
+    throw new Error("Ссылка повреждена: параметры");
+  }
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(startDate) ||
+    ![1, 2].includes(people) ||
+    ![1, 2].includes(motorcycles)
+  ) {
+    throw new Error("Ссылка повреждена: параметры поездки");
+  }
+  if (!["92", "95", "100"].includes(fuelType)) throw new Error("Ссылка повреждена: топливо");
+  const state: RouteState = {
+    points: decodedPoints,
+    roundTrip: (flags & 1) === 1,
+    avoidUnpaved: (flags & 2) === 2,
+    startDate,
+    people: people as 1 | 2,
+    motorcycles: motorcycles as 1 | 2,
+    profile: {
+      presetId,
+      tankL,
+      consumptionLPer100Km: consumption,
+      speeds: { motorway, trunk, regional, local },
+      dailyLimitKm: limitKm,
+      dailyLimitH: limitH,
+      heavyDayKm: heavyKm,
+    },
+    split: split > 0 ? { mode: "km", maxKmPerDay: split } : { mode: "manual" },
+    currency: currency === 1 ? "USD" : "RUB",
+    fuelType: fuelType as RouteState["fuelType"],
+  };
+  if (isFiniteNumber(price)) state.fuelPriceRub = price;
+  if (isFiniteNumber(rate)) state.rubPerUsd = rate;
+  return state;
+}
+
+function toBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function fromBase64Url(text: string): Uint8Array {
+  const base64 = text.replace(/-/g, "+").replace(/_/g, "/");
+  const binary = atob(base64 + "=".repeat((4 - (base64.length % 4)) % 4));
+  return Uint8Array.from(binary, (c) => c.charCodeAt(0));
+}
+
+async function transform(
+  bytes: Uint8Array,
+  stream: CompressionStream | DecompressionStream,
+): Promise<Uint8Array> {
+  const output = new Blob([bytes as BlobPart]).stream().pipeThrough(stream);
+  return new Uint8Array(await new Response(output).arrayBuffer());
+}
+
+/** Состояние → строка для адреса (после «#r=»). */
+export async function encodeState(state: RouteState): Promise<string> {
+  const json = new TextEncoder().encode(JSON.stringify(pack(state)));
+  return toBase64Url(await transform(json, new CompressionStream("deflate-raw")));
+}
+
+/** Строка из адреса → состояние. Бросает Error с понятным текстом, если ссылка повреждена. */
+export async function decodeState(encoded: string): Promise<RouteState> {
+  let json: string;
+  try {
+    json = new TextDecoder().decode(
+      await transform(fromBase64Url(encoded), new DecompressionStream("deflate-raw")),
+    );
+  } catch {
+    throw new Error("Ссылка повреждена: не удалось распаковать маршрут");
+  }
+  let raw: unknown;
+  try {
+    raw = JSON.parse(json);
+  } catch {
+    throw new Error("Ссылка повреждена: не удалось прочитать маршрут");
+  }
+  return unpack(raw);
+}
+
+export const STATE_HASH_PREFIX = "#r=";
