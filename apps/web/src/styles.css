@@ -8,6 +8,8 @@
   --primary: #3c6b4b;
   --on-primary: #ffffff;
   --accent: #e0892f;
+  --accent-ink: #9c520f;
+  --input-border: #9c8b66;
   --on-accent: #2e1a05;
   --map: #dde8ce;
   --land: #c6d8b0;
@@ -180,7 +182,7 @@ select {
   min-height: 44px;
   padding: 10px 12px;
   background: var(--bg);
-  border: 1px solid var(--line);
+  border: 1px solid var(--input-border);
   border-radius: var(--radius-input);
 }
 .input:focus {
@@ -213,7 +215,7 @@ select {
   padding: 0 8px;
 }
 .mark.edited {
-  color: var(--on-accent);
+  color: var(--accent-ink);
   background: var(--warn-bg);
   border-color: var(--accent);
 }
@@ -274,7 +276,7 @@ select {
   min-height: 36px;
   padding: 6px 14px;
   border-radius: 999px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--input-border);
   background: var(--surface);
   cursor: pointer;
 }

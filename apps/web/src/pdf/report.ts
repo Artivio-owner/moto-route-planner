@@ -44,6 +44,8 @@ const C = {
   line: hex("#E3D8BF"),
   primary: hex("#3C6B4B"),
   accent: hex("#E0892F"),
+  /** Оранжевый для текста: контраст от 5:1 (D-02). */
+  accentInk: hex("#9C520F"),
   map: hex("#DDE8CE"),
 };
 
@@ -411,7 +413,7 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
         y: notesTop - 6 - j * 9,
         size: 7.5,
         font: regular,
-        color: C.accent,
+        color: C.accentInk,
       }),
     );
     w.y -= rowH;

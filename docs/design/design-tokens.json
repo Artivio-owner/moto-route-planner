@@ -8,9 +8,11 @@
     "ink": "#2E2B25",
     "muted": "#6A6354",
     "line": "#E3D8BF",
+    "inputBorder": "#9C8B66",
     "primary": "#3C6B4B",
     "onPrimary": "#FFFFFF",
     "accent": "#E0892F",
+    "accentInk": "#9C520F",
     "onAccent": "#2E1A05",
     "map": "#DDE8CE",
     "land": "#C6D8B0"
@@ -18,11 +20,34 @@
   "font": {
     "family": "Rubik",
     "fallback": "system-ui, sans-serif",
-    "weights": [400, 500, 700],
+    "weights": [
+      400,
+      500,
+      700
+    ],
     "license": "SIL OFL (проверить при встраивании)"
   },
-  "fontSize": { "label": 13, "body": 15, "cardTitle": 19, "logo": 28, "figure": 30 },
-  "radius": { "card": 18, "map": 18, "input": 12, "button": 12, "chip": 999 },
-  "spacing": { "cardPadding": 18, "gap": 12, "columnGap": 20, "pagePadding": 32 },
-  "touchTarget": { "min": 44 }
+  "fontSize": {
+    "label": 13,
+    "body": 15,
+    "cardTitle": 19,
+    "logo": 28,
+    "figure": 30
+  },
+  "radius": {
+    "card": 18,
+    "map": 18,
+    "input": 12,
+    "button": 12,
+    "chip": 999
+  },
+  "spacing": {
+    "cardPadding": 18,
+    "gap": 12,
+    "columnGap": 20,
+    "pagePadding": 32
+  },
+  "touchTarget": {
+    "min": 44
+  }
 }
