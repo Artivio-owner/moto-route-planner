@@ -1,0 +1,53 @@
+# GraphHopper для «Версты»: мото-профили (спайк S-01, docs/spikes/s01-graphhopper.md).
+# Файл OSM задаётся при запуске: -Ddw.graphhopper.datareader.file=/data/region.osm.pbf
+graphhopper:
+  datareader.file: ""
+  graph.location: graph-cache
+  custom_models.directory: custom_models
+
+  profiles:
+    # По умолчанию: избегаем грунта (ответ владельца 19, решение А4).
+    - name: moto
+      custom_model_files: [moto.json, avoid_unpaved.json]
+    # Грунт разрешён (переключатель «можно по грунту»).
+    - name: moto_unpaved
+      custom_model_files: [moto.json]
+    # Пробный режим «извилистые дороги» (M-01, P1).
+    - name: moto_curvy
+      custom_model_files: [moto.json, avoid_unpaved.json, curvy.json]
+
+  profiles_ch:
+    - profile: moto
+    - profile: moto_unpaved
+  profiles_lm:
+    - profile: moto_curvy
+
+  graph.encoded_values: car_access, car_average_speed, road_access, road_class, road_environment, surface, toll, curvature, max_speed
+
+  prepare.min_network_size: 200
+  prepare.subnetworks.threads: 1
+  routing.snap_preventions_default: tunnel, bridge, ferry
+  # Защита сервера (ADR-0011): запрос дольше 30 с прерывается.
+  routing.timeout_ms: 30000
+  routing.non_ch.max_waypoint_distance: 1000000
+  import.osm.ignored_highways: footway,construction,cycleway,path,steps,bridleway,pedestrian
+  graph.dataaccess.default_type: RAM_STORE
+  # Названия улиц по-русски, если в OSM есть name:ru.
+  datareader.preferred_language: ru
+
+server:
+  application_connectors:
+    - type: http
+      port: 8989
+      bind_host: 0.0.0.0
+      max_request_header_size: 50k
+  request_log:
+    appenders: []
+  admin_connectors:
+    - type: http
+      port: 8990
+      bind_host: localhost
+logging:
+  appenders:
+    - type: console
+      threshold: INFO

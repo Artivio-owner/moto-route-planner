@@ -1,0 +1,9 @@
+{
+  "priority": [
+    {
+      "if": "surface == UNPAVED || surface == COMPACTED || surface == FINE_GRAVEL || surface == GRAVEL || surface == GROUND || surface == DIRT || surface == GRASS || surface == SAND",
+      "multiply_by": "0.05"
+    },
+    { "if": "road_class == TRACK", "multiply_by": "0.05" }
+  ]
+}
