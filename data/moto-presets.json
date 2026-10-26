@@ -1,0 +1,38 @@
+{
+  "note": "Ориентиры для обсуждения, не измерения (спецификация 14, раздел 2). Владелец проверит значения",
+  "presets": [
+    {
+      "id": "beginner",
+      "name": "Новичок",
+      "tankL": 14,
+      "consumptionLPer100Km": 4.5,
+      "speeds": { "motorway": 100, "trunk": 80, "regional": 70, "local": 50 },
+      "dailyLimitKm": 300,
+      "dailyLimitH": 6,
+      "heavyDayKm": 400,
+      "allowUnpaved": false
+    },
+    {
+      "id": "chopper",
+      "name": "Чопперист",
+      "tankL": 14,
+      "consumptionLPer100Km": 6.0,
+      "speeds": { "motorway": 110, "trunk": 90, "regional": 80, "local": 55 },
+      "dailyLimitKm": 350,
+      "dailyLimitH": 7,
+      "heavyDayKm": 450,
+      "allowUnpaved": false
+    },
+    {
+      "id": "touring-enduro",
+      "name": "Турэндуро",
+      "tankL": 20,
+      "consumptionLPer100Km": 5.5,
+      "speeds": { "motorway": 110, "trunk": 90, "regional": 80, "local": 55 },
+      "dailyLimitKm": 450,
+      "dailyLimitH": 8,
+      "heavyDayKm": 550,
+      "allowUnpaved": false
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Страны покрытия",
+  "type": "object",
+  "required": ["countries"],
+  "additionalProperties": false,
+  "properties": {
+    "countries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["code", "name", "currency", "since"],
+        "additionalProperties": false,
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z]{2}$" },
+          "name": { "type": "string", "minLength": 1 },
+          "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "since": { "enum": ["v0.1", "v0.2", "v0.3", "later"] }
+        }
+      }
+    }
+  }
+}
