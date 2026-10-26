@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fuelCost, fuelLiters, rangeKm } from "./fuel.js";
+import { fuelCost, fuelLiters, fuelStopsKm, rangeKm } from "./fuel.js";
 
 describe("rangeKm", () => {
   // Значения пресетов из docs/14-trip-parameters-spec.md, раздел 2.
@@ -33,5 +33,15 @@ describe("fuelLiters", () => {
 describe("fuelCost", () => {
   it("120 л по 75 ₽ → 9000 ₽", () => {
     expect(fuelCost(120, 75)).toBe(9000);
+  });
+});
+
+describe("fuelStopsKm", () => {
+  it("заправки через каждый запас хода", () => {
+    expect(fuelStopsKm(700, 280)).toEqual([280, 560]);
+  });
+
+  it("на маршруте короче запаса хода заправок нет", () => {
+    expect(fuelStopsKm(200, 280)).toEqual([]);
   });
 });
