@@ -1,6 +1,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { computePlan, routeLine } from "../src/lib/plan";
+import { PDFDict, PDFDocument, PDFName } from "pdf-lib";
+import QRCode from "qrcode";
 import { buildReport } from "../src/pdf/report";
 import { initialState, reducer } from "../src/state/planner";
 import { route } from "./fixtures";
@@ -35,11 +37,29 @@ describe("PDF путевой лист", () => {
             },
       ),
       skipMapSnapshot: true,
+      donate: {
+        label: "Поддержать разработчика",
+        url: "https://example.org/donate",
+        qr: {
+          bytes: new Uint8Array(await QRCode.toBuffer("https://example.org/donate")),
+          kind: "png",
+        },
+      },
       fonts: { regular: font("Rubik-Regular.ttf"), bold: font("Rubik-Bold.ttf") },
       now: new Date("2026-06-20T10:00:00Z"),
     });
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
     expect(bytes.length).toBeLessThan(10 * 1024 * 1024);
     if (process.env.PDF_OUT) writeFileSync(process.env.PDF_OUT, bytes);
+    // На последней странице кликабельная ссылка «Поддержать разработчика».
+    const loaded = await PDFDocument.load(bytes);
+    const last = loaded.getPages().at(-1);
+    const annots = last?.node.Annots();
+    const uris = (annots?.asArray() ?? []).map((ref) => {
+      const annot = loaded.context.lookup(ref, PDFDict);
+      const action = annot.lookup(PDFName.of("A"), PDFDict);
+      return action.lookup(PDFName.of("URI"))?.toString();
+    });
+    expect(uris.some((u) => u?.includes("example.org/donate"))).toBe(true);
   });
 });
