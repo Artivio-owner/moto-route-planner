@@ -31,15 +31,23 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== "GET" || url.origin !== self.location.origin) return;
-  // API и тайлы всегда из сети: данные должны быть свежими.
-  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/tiles/")) return;
+  // API, тайлы и админка всегда из сети: данные должны быть свежими.
+  if (["/api/", "/tiles/", "/admin"].some((prefix) => url.pathname.startsWith(prefix))) return;
   // Страницы: сначала сеть, без сети последняя сохранённая оболочка.
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put("/plan", copy));
+          // Сохраняем только оболочку приложения: «/» и «/plan».
+          const key = url.pathname.startsWith("/plan")
+            ? "/plan"
+            : url.pathname === "/"
+              ? "/"
+              : null;
+          if (key && response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(key, copy));
+          }
           return response;
         })
         .catch(() => caches.match("/plan").then((r) => r || caches.match("/"))),

@@ -185,7 +185,7 @@ export function buildServer(deps: Dependencies): FastifyInstance {
   );
 
   if (deps.config.webDir) {
-    app.register(fastifyStatic, { root: deps.config.webDir });
+    app.register(fastifyStatic, { root: deps.config.webDir, redirect: true });
     // Одностраничное приложение: страницы без расширения отдают index.html, отсутствующие файлы дают 404.
     app.setNotFoundHandler((request, reply) => {
       const path = request.url.split(/[?#]/)[0] ?? "";
