@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Цены топлива",
+  "type": "object",
+  "required": ["updated", "defaultFuel", "countries"],
+  "additionalProperties": false,
+  "properties": {
+    "updated": { "type": "string", "format": "date" },
+    "note": { "type": "string" },
+    "defaultFuel": { "enum": ["92", "95", "100"] },
+    "countries": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Z]{2}$" },
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["95"],
+        "additionalProperties": false,
+        "properties": {
+          "92": { "$ref": "#/definitions/price" },
+          "95": { "$ref": "#/definitions/price" },
+          "100": { "$ref": "#/definitions/price" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "price": { "type": "number", "exclusiveMinimum": 0, "maximum": 1000 }
+  }
+}

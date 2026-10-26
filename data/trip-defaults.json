@@ -1,0 +1,17 @@
+{
+  "note": "Значения по умолчанию из docs/12-open-questions.md (приняты владельцем, ответ А7)",
+  "presetId": "chopper",
+  "people": 1,
+  "motorcycles": 1,
+  "currency": "RUB",
+  "avoidUnpaved": true,
+  "split": { "mode": "km", "maxKmPerDay": 400 },
+  "stops": {
+    "dayStart": "08:00",
+    "fuelStopMin": 15,
+    "lunchMin": 45,
+    "lunchAfterDrivingH": 4
+  },
+  "history": { "maxEntries": 10, "keepDays": 30 },
+  "longRouteWarningKm": 5000
+}

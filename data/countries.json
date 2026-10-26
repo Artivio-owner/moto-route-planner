@@ -1,0 +1,8 @@
+{
+  "countries": [
+    { "code": "RU", "name": "Россия", "currency": "RUB", "since": "v0.1" },
+    { "code": "KZ", "name": "Казахстан", "currency": "KZT", "since": "v0.2" },
+    { "code": "GE", "name": "Грузия", "currency": "GEL", "since": "v0.2" },
+    { "code": "TR", "name": "Турция", "currency": "TRY", "since": "v0.2" }
+  ]
+}

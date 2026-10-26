@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Курс доллара",
+  "type": "object",
+  "required": ["updated", "rubPerUsd"],
+  "additionalProperties": false,
+  "properties": {
+    "updated": { "type": "string", "format": "date" },
+    "note": { "type": "string" },
+    "rubPerUsd": { "type": "number", "minimum": 10, "maximum": 1000 }
+  }
+}
