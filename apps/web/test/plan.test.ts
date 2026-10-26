@@ -20,6 +20,30 @@ describe("расчёт плана из ответа API", () => {
     expect(fuelPriceEdited).toBe(false);
     expect(plan.days[0]?.hasToll).toBe(true);
     expect(plan.days[2]?.endTimeZone).toBe("Europe/Samara");
+    // Закат считается по координатам финиша дня (C-06): 1 июля в Поволжье около 21 часа.
+    expect(plan.days[0]?.sunset?.getUTCHours()).toBeGreaterThanOrEqual(16);
+  });
+
+  it("бюджет: жильё за номер, еда на людей, кофе от заправок", () => {
+    let s = reducer(state(), {
+      type: "set",
+      patch: { people: 2, split: { mode: "km", maxKmPerDay: 400 } },
+    });
+    s = reducer(s, {
+      type: "budget",
+      patch: {
+        roomPriceRub: 5000,
+        foodPriceRub: 2000,
+        coffeePriceRub: 200,
+        coffee: true,
+        reservePct: 0,
+      },
+    });
+    const { budget, plan } = computePlan(s, route);
+    expect(budget.lodging).toBe(plan.nights * 1 * 5000);
+    expect(budget.food).toBe(plan.days.length * 2 * 2000);
+    expect(budget.coffee).toBe(plan.fuelStops * 2 * 200);
+    expect(budget.total).toBeCloseTo(budget.fuel + budget.lodging + budget.food + budget.coffee);
   });
 
   it("вручную: ночёвка в Нижнем Новгороде", () => {

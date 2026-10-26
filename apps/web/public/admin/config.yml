@@ -212,7 +212,13 @@ collections:
                   name: mode,
                   label: Режим,
                   widget: select,
-                  options: [{ label: По километрам, value: km }, { label: Вручную, value: manual }],
+                  options:
+                    [
+                      { label: По километрам, value: km },
+                      { label: По времени в пути, value: hours },
+                      { label: По числу дней, value: days },
+                      { label: Вручную, value: manual },
+                    ],
                 }
               - {
                   name: maxKmPerDay,
@@ -222,6 +228,15 @@ collections:
                   min: 50,
                   max: 2000,
                 }
+              - {
+                  name: maxHoursPerDay,
+                  label: Часов в день,
+                  widget: number,
+                  value_type: float,
+                  min: 1,
+                  max: 20,
+                }
+              - { name: days, label: Дней, widget: number, value_type: int, min: 1, max: 100 }
           - name: stops
             label: Остановки
             widget: object
@@ -276,6 +291,22 @@ collections:
                   min: 1,
                   max: 365,
                 }
+          - name: weather
+            label: Пороги предупреждений о погоде
+            widget: object
+            fields:
+              - { name: rainMm, label: "Осадки от, мм", widget: number, value_type: float, min: 0 }
+              - {
+                  name: rainProbability,
+                  label: "Вероятность осадков от, %",
+                  widget: number,
+                  value_type: int,
+                  min: 0,
+                  max: 100,
+                }
+              - { name: windKmh, label: "Ветер от, км/ч", widget: number, value_type: int, min: 10 }
+              - { name: coldC, label: "Холодно ниже, °C", widget: number, value_type: int }
+              - { name: hotC, label: "Жарко выше, °C", widget: number, value_type: int }
           - {
               name: longRouteWarningKm,
               label: "Предупреждать о длинном маршруте от, км",
@@ -283,6 +314,81 @@ collections:
               value_type: int,
               min: 100,
             }
+
+      - name: budget-defaults
+        label: Бюджет по умолчанию
+        file: data/budget-defaults.json
+        format: json
+        fields:
+          - {
+              name: updated,
+              label: Дата обновления,
+              widget: datetime,
+              type: date,
+              format: YYYY-MM-DD,
+            }
+          - { name: note, label: Примечание, widget: text, required: false }
+          - name: lodging
+            label: Жильё
+            widget: object
+            fields:
+              - name: type
+                label: Тип по умолчанию
+                widget: select
+                options:
+                  - { label: Отель 3★, value: hotel3 }
+                  - { label: Отель 4★, value: hotel4 }
+                  - { label: Отель 5★, value: hotel5 }
+                  - { label: Гостевой дом, value: guesthouse }
+                  - { label: Кемпинг, value: camping }
+              - name: pricePerRoomRub
+                label: "Цена за номер в ночь, ₽"
+                widget: object
+                fields:
+                  - { name: hotel3, label: Отель 3★, widget: number, value_type: int, min: 0 }
+                  - { name: hotel4, label: Отель 4★, widget: number, value_type: int, min: 0 }
+                  - { name: hotel5, label: Отель 5★, widget: number, value_type: int, min: 0 }
+                  - {
+                      name: guesthouse,
+                      label: Гостевой дом,
+                      widget: number,
+                      value_type: int,
+                      min: 0,
+                    }
+                  - { name: camping, label: Кемпинг, widget: number, value_type: int, min: 0 }
+          - name: food
+            label: Еда
+            widget: object
+            fields:
+              - name: level
+                label: Уровень по умолчанию
+                widget: select
+                options:
+                  - { label: Эконом, value: economy }
+                  - { label: Средний, value: medium }
+                  - { label: Высокий, value: high }
+              - name: perPersonDayRub
+                label: "На человека в день, ₽"
+                widget: object
+                fields:
+                  - { name: economy, label: Эконом, widget: number, value_type: int, min: 0 }
+                  - { name: medium, label: Средний, widget: number, value_type: int, min: 0 }
+                  - { name: high, label: Высокий, widget: number, value_type: int, min: 0 }
+          - name: coffee
+            label: Кофе на заправках
+            widget: object
+            fields:
+              - { name: enabled, label: Включён по умолчанию, widget: boolean }
+              - { name: priceRub, label: "Цена чашки, ₽", widget: number, value_type: int, min: 0 }
+          - {
+              name: reservePct,
+              label: "Резерв, %",
+              widget: number,
+              value_type: int,
+              min: 0,
+              max: 100,
+            }
+          - { name: finalNight, label: Ночь в конечной точке по умолчанию, widget: boolean }
 
       - name: countries
         label: Страны покрытия

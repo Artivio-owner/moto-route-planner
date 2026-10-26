@@ -107,4 +107,68 @@ describe("planTrip", () => {
     expect(plan.days).toHaveLength(1);
     expect(plan.nights).toBe(0);
   });
+
+  it("предупреждение о финише после заката (C-11)", () => {
+    // Москва, декабрь: закат около 16:00, 8 часов в пути от 8:00.
+    const plan = planTrip({
+      ...base,
+      startDate: "2026-12-20",
+      split: { mode: "manual" },
+      legs: [{ segments: [{ distanceKm: 560, roadClass: "trunk" }] }],
+      positionAtKm: () => ({ lat: 55.75, lon: 37.62 }),
+    });
+    const day = plan.days[0];
+    expect(day?.sunset).not.toBeNull();
+    expect(day?.warnings.map((w) => w.kind)).toContain("afterSunset");
+    expect(day?.warnings.find((w) => w.kind === "afterSunset")?.message).toMatch(
+      /закат в 15:5\d|закат в 16:0\d/,
+    );
+  });
+
+  it("без координат закат не считается", () => {
+    expect(planTrip(base).days[0]?.sunset).toBeNull();
+  });
+
+  it("по времени: ни один день не длиннее 8 часов с остановками (C-08)", () => {
+    const plan = planTrip({
+      ...base,
+      split: { mode: "hours", maxHoursPerDay: 8 },
+      legs: [{ segments: [{ distanceKm: 2000, roadClass: "trunk" }] }],
+    });
+    expect(plan.days.length).toBeGreaterThan(1);
+    for (const day of plan.days) expect(day.totalH).toBeLessThanOrEqual(8 + 1e-6);
+    expect(plan.days.reduce((s, d) => s + d.distanceKm, 0)).toBeCloseTo(2000);
+  });
+
+  it("по числу дней: 4 дня примерно равны по времени (C-09)", () => {
+    const plan = planTrip({
+      ...base,
+      split: { mode: "days", days: 4 },
+      legs: [
+        {
+          segments: [
+            { distanceKm: 600, roadClass: "motorway" },
+            { distanceKm: 300, roadClass: "local" },
+            { distanceKm: 500, roadClass: "trunk" },
+          ],
+        },
+      ],
+    });
+    expect(plan.days).toHaveLength(4);
+    const times = plan.days.map((d) => d.drivingH);
+    const avg = times.reduce((a, b) => a + b, 0) / times.length;
+    for (const t of times) expect(Math.abs(t - avg) / avg).toBeLessThanOrEqual(0.15);
+  });
+
+  it("лимит часов больше маршрута: один день", () => {
+    const plan = planTrip({ ...base, split: { mode: "hours", maxHoursPerDay: 20 } });
+    expect(plan.days).toHaveLength(1);
+  });
+
+  it("неверные значения режимов отклоняются", () => {
+    expect(() => planTrip({ ...base, split: { mode: "days", days: 0 } })).toThrow(RangeError);
+    expect(() => planTrip({ ...base, split: { mode: "hours", maxHoursPerDay: 0 } })).toThrow(
+      RangeError,
+    );
+  });
 });

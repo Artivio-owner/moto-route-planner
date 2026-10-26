@@ -17,6 +17,23 @@ async function mockApi(page: Page) {
     const found = Object.values(places).filter((p) => p.name.startsWith(q.slice(0, 3)));
     return r.fulfill({ contentType: "application/json", body: JSON.stringify({ places: found }) });
   });
+  await page.route("**/api/weather**", (r) => {
+    const date = new URL(r.request().url()).searchParams.get("date");
+    return r.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        weather: {
+          kind: "forecast",
+          date,
+          tempMaxC: 22,
+          tempMinC: 11,
+          precipitationMm: 7,
+          windMaxKmh: 20,
+          weatherCode: 61,
+        },
+      }),
+    });
+  });
   await page.route("**/api/reverse**", (r) =>
     r.fulfill({
       contentType: "application/json",
@@ -48,6 +65,8 @@ test("маршрут, дни, ссылка, PDF и GPX", async ({ page }) => {
   await expect(sheet.locator(".figure").first()).toHaveText("131 км");
   await expect(page.getByText(/День 1 ·/)).toBeVisible();
   await expect(sheet.getByText("ориентировочно").first()).toBeVisible();
+  await expect(sheet.getByText(/дождь, \+11…\+22 °C/).first()).toBeVisible();
+  await expect(sheet.getByText(/Возможен дождь/).first()).toBeVisible();
   await expect(page).toHaveURL(/\/plan#r=[A-Za-z0-9_-]+$/);
 
   // Два мотоцикла: литров вдвое больше.
@@ -73,6 +92,54 @@ async function readPdfHead(download: { path(): Promise<string | null> }): Promis
   const path = await download.path();
   return path ? readFileSync(path).subarray(0, 5).toString("latin1") : "";
 }
+
+test("разбивка по числу дней и закат в дне", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/plan");
+  await pick(page, "Откуда, точка 1", "Старт");
+  await pick(page, "Куда, точка 2", "Финиш");
+  await page
+    .getByRole("group", { name: "Дни" })
+    .getByRole("button", { name: "По числу дней" })
+    .click();
+  const days = page.getByLabel(/Уложиться в/);
+  await days.fill("3");
+  await days.press("Enter");
+  await expect(page.getByRole("list", { name: "Дни поездки" }).getByRole("listitem")).toHaveCount(
+    3,
+  );
+  await expect(page.getByText(/закат \d\d:\d\d/).first()).toBeVisible();
+});
+
+/** Ссылка обновляется асинхронно: ждём, пока адрес изменится. */
+async function nextUrl(page: Page, previous: string): Promise<string> {
+  await expect.poll(() => page.url()).not.toBe(previous);
+  return page.url();
+}
+
+test("бюджет в путевом листе и сохранение в ссылке", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/plan");
+  await pick(page, "Откуда, точка 1", "Старт");
+  await pick(page, "Куда, точка 2", "Финиш");
+  await expect(page.getByText("бюджет поездки")).toBeVisible();
+  await expect(page).toHaveURL(/#r=/);
+  let url = page.url();
+  await page.getByRole("group", { name: "Жильё" }).getByRole("button", { name: "Кемпинг" }).click();
+  url = await nextUrl(page, url);
+  const other = page.getByLabel(/^Прочее/);
+  await other.fill("1500");
+  await other.press("Enter");
+  await expect(page.locator(".budget-table")).toContainText("Прочее");
+  url = await nextUrl(page, url);
+  const fresh = await page.context().newPage();
+  await mockApi(fresh);
+  await fresh.goto(url);
+  await expect(
+    fresh.getByRole("group", { name: "Жильё" }).getByRole("button", { name: "Кемпинг" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(fresh.locator(".budget-table")).toContainText("Прочее");
+});
 
 test("ссылка восстанавливает маршрут", async ({ page }) => {
   await mockApi(page);

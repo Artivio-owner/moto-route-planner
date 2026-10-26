@@ -1,0 +1,21 @@
+{
+  "updated": "2026-10-26",
+  "note": "Ориентировочно. Значения-заглушки разработки, не проверены: владелец задаёт их в админке (ответ В2)",
+  "lodging": {
+    "type": "hotel3",
+    "pricePerRoomRub": {
+      "hotel3": 4000,
+      "hotel4": 7000,
+      "hotel5": 12000,
+      "guesthouse": 2500,
+      "camping": 800
+    }
+  },
+  "food": {
+    "level": "medium",
+    "perPersonDayRub": { "economy": 1200, "medium": 2500, "high": 5000 }
+  },
+  "coffee": { "enabled": true, "priceRub": 200 },
+  "reservePct": 10,
+  "finalNight": false
+}

@@ -16,6 +16,34 @@ describe("состояние в ссылке", () => {
     expect(await decodeState(await encodeState(state))).toEqual(state);
   });
 
+  it("режимы по времени и по числу дней", async () => {
+    for (const split of [
+      { mode: "hours", maxHoursPerDay: 7.5 },
+      { mode: "days", days: 12 },
+    ] as const) {
+      const state = { ...sampleState(false), split };
+      expect((await decodeState(await encodeState(state))).split).toEqual(split);
+    }
+  });
+
+  it("бюджет в ссылке; ссылки без бюджета открываются", async () => {
+    const state = {
+      ...sampleState(true),
+      budget: {
+        lodging: "guesthouse",
+        rooms: 2,
+        food: "economy",
+        coffee: true,
+        finalNight: true,
+        otherRub: 3500,
+        reservePct: 15,
+        roomPriceRub: 3100,
+      } as const,
+    };
+    expect((await decodeState(await encodeState(state))).budget).toEqual(state.budget);
+    expect((await decodeState(await encodeState(sampleState(true)))).budget).toBeUndefined();
+  });
+
   it("строка годится для адреса без экранирования", async () => {
     expect(await encodeState(sampleState(true))).toMatch(/^[A-Za-z0-9_-]+$/);
   });

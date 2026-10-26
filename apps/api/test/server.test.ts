@@ -154,3 +154,34 @@ describe("тайлы", () => {
     expect(part.body).toBe("234");
   });
 });
+
+describe("GET /api/weather", () => {
+  it("отдаёт погоду и проверяет дату", async () => {
+    const geocoder: GeocoderClient = { search: async () => [], reverse: async () => null };
+    const graphhopper: GraphHopperClient = { leg: async () => fakeLeg(1) };
+    const app = buildServer({
+      config: { routeRateLimit: 10 },
+      graphhopper,
+      geocoder,
+      weather: {
+        day: async (lat, lon, date) => ({
+          kind: "forecast",
+          date,
+          tempMaxC: 20,
+          tempMinC: 10,
+          precipitationMm: 0,
+          windMaxKmh: 10,
+        }),
+      },
+    });
+    const ok = await app.inject({
+      method: "GET",
+      url: "/api/weather?lat=55.7&lon=37.6&date=2026-07-01",
+    });
+    expect(ok.json().weather.tempMaxC).toBe(20);
+    expect(
+      (await app.inject({ method: "GET", url: "/api/weather?lat=55.7&lon=37.6&date=1.7.2026" }))
+        .statusCode,
+    ).toBe(400);
+  });
+});

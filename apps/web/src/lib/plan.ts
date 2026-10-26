@@ -1,6 +1,6 @@
 // Расчёт плана поездки из состояния и ответа API.
-import { planTrip, type Leg, type TripPlan } from "@versta/calc";
-import { defaultFuelPrice, exchangeRate, stopSettings } from "../config";
+import { computeBudget, planTrip, type Budget, type Leg, type TripPlan } from "@versta/calc";
+import { budgetDefaults, defaultFuelPrice, exchangeRate, stopSettings } from "../config";
 import { completePoints, type PlannerState } from "../state/planner";
 import type { LonLat, RouteResponse } from "./api";
 
@@ -11,6 +11,16 @@ export interface PlanResult {
   /** Цена и курс по умолчанию или изменены пользователем. */
   fuelPriceEdited: boolean;
   rateEdited: boolean;
+  budget: Budget;
+  /** Цены бюджета, по которым посчитано, и признак «изменено пользователем». */
+  budgetPrices: {
+    room: number;
+    food: number;
+    coffee: number;
+    roomEdited: boolean;
+    foodEdited: boolean;
+    coffeeEdited: boolean;
+  };
 }
 
 export function fuelPriceOf(state: PlannerState): number {
@@ -30,6 +40,7 @@ export function computePlan(state: PlannerState, route: RouteResponse): PlanResu
     return result;
   });
   const fuelPriceRub = fuelPriceOf(state);
+  const line = routeLine(route);
   const plan = planTrip({
     legs,
     split: state.split,
@@ -39,6 +50,35 @@ export function computePlan(state: PlannerState, route: RouteResponse): PlanResu
     zones: route.zones.length ? route.zones : [{ fromKm: 0, timeZone: "Europe/Moscow" }],
     fuelPriceRub,
     stops: stopSettings,
+    positionAtKm: (km) => {
+      const [lon, lat] = pointAtKm(line, km);
+      return { lat, lon };
+    },
+  });
+  const b = state.budget;
+  const budgetPrices = {
+    room: b.roomPriceRub ?? budgetDefaults.lodging.pricePerRoomRub[b.lodging],
+    food: b.foodPriceRub ?? budgetDefaults.food.perPersonDayRub[b.food],
+    coffee: b.coffeePriceRub ?? budgetDefaults.coffee.priceRub,
+    roomEdited: b.roomPriceRub !== undefined,
+    foodEdited: b.foodPriceRub !== undefined,
+    coffeeEdited: b.coffeePriceRub !== undefined,
+  };
+  const budget = computeBudget({
+    days: plan.days.length,
+    nights: plan.nights,
+    finalNight: b.finalNight,
+    people: plan.group.people,
+    // Вдвоём по умолчанию один номер (спецификация 07); одному второй номер не нужен.
+    rooms: plan.group.people === 1 ? 1 : b.rooms,
+    roomPriceRub: budgetPrices.room,
+    foodPerPersonDayRub: budgetPrices.food,
+    fuelCostRub: plan.fuelCostRub,
+    fuelStops: plan.fuelStops,
+    coffee: b.coffee,
+    coffeePriceRub: budgetPrices.coffee,
+    otherRub: b.otherRub,
+    reservePct: b.reservePct,
   });
   return {
     plan,
@@ -46,6 +86,8 @@ export function computePlan(state: PlannerState, route: RouteResponse): PlanResu
     rubPerUsd: rateOf(state),
     fuelPriceEdited: state.fuelPriceRub !== undefined,
     rateEdited: state.rubPerUsd !== undefined,
+    budget,
+    budgetPrices,
   };
 }
 

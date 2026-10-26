@@ -1,11 +1,12 @@
 // Настройки из data/ (ADR-0013: владелец меняет их через админку).
+import budgetDefaultsJson from "@data/budget-defaults.json";
 import countriesJson from "@data/countries.json";
 import exchangeRateJson from "@data/exchange-rate.json";
 import fuelPricesJson from "@data/fuel-prices.json";
 import presetsJson from "@data/moto-presets.json";
 import siteJson from "@data/site.json";
 import tripDefaultsJson from "@data/trip-defaults.json";
-import type { ProfileState } from "@versta/route-format";
+import type { BudgetState, ProfileState } from "@versta/route-format";
 
 export type FuelType = "92" | "95" | "100";
 
@@ -20,7 +21,12 @@ export const tripDefaults = tripDefaultsJson as typeof tripDefaultsJson & {
   people: 1 | 2;
   motorcycles: 1 | 2;
   currency: "RUB" | "USD";
-  split: { mode: "km" | "manual"; maxKmPerDay: number };
+  split: {
+    mode: "km" | "manual" | "hours" | "days";
+    maxKmPerDay: number;
+    maxHoursPerDay: number;
+    days: number;
+  };
 };
 export const site = siteJson;
 export const countries = countriesJson.countries;
@@ -67,3 +73,27 @@ export function presetToProfile(preset: Preset): ProfileState {
 
 /** Предел, после которого ссылку стоит сохранить в файл (спайк X-09). */
 export const LONG_LINK_CHARS = 8000;
+
+export const budgetDefaults = budgetDefaultsJson as {
+  updated: string;
+  lodging: {
+    type: BudgetState["lodging"];
+    pricePerRoomRub: Record<BudgetState["lodging"], number>;
+  };
+  food: { level: BudgetState["food"]; perPersonDayRub: Record<BudgetState["food"], number> };
+  coffee: { enabled: boolean; priceRub: number };
+  reservePct: number;
+  finalNight: boolean;
+};
+
+export function defaultBudget(): BudgetState {
+  return {
+    lodging: budgetDefaults.lodging.type,
+    rooms: 1,
+    food: budgetDefaults.food.level,
+    coffee: budgetDefaults.coffee.enabled,
+    finalNight: budgetDefaults.finalNight,
+    otherRub: 0,
+    reservePct: budgetDefaults.reservePct,
+  };
+}

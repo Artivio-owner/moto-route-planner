@@ -22,6 +22,8 @@ export {
   utcOffsetMinutes,
   zonedTimeToInstant,
 } from "./time.js";
+export { sunTimes } from "./sun.js";
+export type { SunTimes } from "./sun.js";
 export { DEFAULT_STOPS, planTrip, zoneAtKm } from "./trip.js";
 export type {
   DayPlan,
@@ -33,3 +35,11 @@ export type {
   TripPlan,
   ZoneMark,
 } from "./trip.js";
+export {
+  FOOD_LABELS,
+  FOOD_LEVELS,
+  LODGING_LABELS,
+  LODGING_TYPES,
+  computeBudget,
+} from "./budget.js";
+export type { Budget, BudgetInput, FoodLevel, LodgingType } from "./budget.js";

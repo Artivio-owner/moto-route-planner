@@ -22,6 +22,29 @@ export interface ProfileState {
   heavyDayKm: number;
 }
 
+/** Бюджет (C-05). Цены задаются, только если пользователь их изменил. */
+export interface BudgetState {
+  lodging: "hotel3" | "hotel4" | "hotel5" | "guesthouse" | "camping";
+  rooms: 1 | 2;
+  food: "economy" | "medium" | "high";
+  coffee: boolean;
+  finalNight: boolean;
+  otherRub: number;
+  reservePct: number;
+  roomPriceRub?: number;
+  foodPriceRub?: number;
+  coffeePriceRub?: number;
+}
+
+const LODGING_CODES: BudgetState["lodging"][] = [
+  "hotel3",
+  "hotel4",
+  "hotel5",
+  "guesthouse",
+  "camping",
+];
+const FOOD_CODES: BudgetState["food"][] = ["economy", "medium", "high"];
+
 export interface RouteState {
   points: RoutePoint[];
   /** Маршрут с возвратом: флаг, а не новые точки (ADR-0011). */
@@ -32,12 +55,17 @@ export interface RouteState {
   people: 1 | 2;
   motorcycles: 1 | 2;
   profile: ProfileState;
-  split: { mode: "km"; maxKmPerDay: number } | { mode: "manual" };
+  split:
+    | { mode: "km"; maxKmPerDay: number }
+    | { mode: "manual" }
+    | { mode: "hours"; maxHoursPerDay: number }
+    | { mode: "days"; days: number };
   currency: "RUB" | "USD";
   fuelType: "92" | "95" | "100";
   /** Цена, если пользователь её изменил; иначе берётся значение по умолчанию. */
   fuelPriceRub?: number;
   rubPerUsd?: number;
+  budget?: BudgetState;
 }
 
 const COORD_SCALE = 1e5; // ≈ 1 м
@@ -54,12 +82,86 @@ type Packed = [
   people: number,
   motorcycles: number,
   profile: [string, number, number, number, number, number, number, number, number, number],
-  split: number,
+  /** Число: км в день (0 = вручную); массив [1, часы] или [2, дни] для новых режимов. */
+  split: number | [code: number, value: number],
   currency: number,
   fuelType: string,
   fuelPriceRub: number | null,
   rubPerUsd: number | null,
+  budget?: [
+    lodging: number,
+    rooms: number,
+    food: number,
+    flags: number,
+    otherRub: number,
+    reservePct: number,
+    roomPrice: number | null,
+    foodPrice: number | null,
+    coffeePrice: number | null,
+  ],
 ];
+
+function packSplit(split: RouteState["split"]): Packed[7] {
+  switch (split.mode) {
+    case "km":
+      return split.maxKmPerDay;
+    case "manual":
+      return 0;
+    case "hours":
+      return [1, split.maxHoursPerDay];
+    case "days":
+      return [2, split.days];
+  }
+}
+
+function unpackSplit(raw: unknown): RouteState["split"] {
+  if (isFiniteNumber(raw)) return raw > 0 ? { mode: "km", maxKmPerDay: raw } : { mode: "manual" };
+  if (Array.isArray(raw) && isFiniteNumber(raw[1]) && raw[1] > 0) {
+    if (raw[0] === 1) return { mode: "hours", maxHoursPerDay: raw[1] };
+    if (raw[0] === 2) return { mode: "days", days: Math.round(raw[1]) };
+  }
+  throw new Error("Ссылка повреждена: разбивка по дням");
+}
+
+function packBudget(b: BudgetState): NonNullable<Packed[12]> {
+  return [
+    LODGING_CODES.indexOf(b.lodging),
+    b.rooms,
+    FOOD_CODES.indexOf(b.food),
+    (b.coffee ? 1 : 0) | (b.finalNight ? 2 : 0),
+    b.otherRub,
+    b.reservePct,
+    b.roomPriceRub ?? null,
+    b.foodPriceRub ?? null,
+    b.coffeePriceRub ?? null,
+  ];
+}
+
+function unpackBudget(raw: unknown): BudgetState {
+  if (!Array.isArray(raw) || raw.length !== 9) throw new Error("Ссылка повреждена: бюджет");
+  const [lodging, rooms, food, flags, other, reserve, roomPrice, foodPrice, coffeePrice] =
+    raw as unknown[];
+  const lodgingType = LODGING_CODES[lodging as number];
+  const foodLevel = FOOD_CODES[food as number];
+  if (!lodgingType || !foodLevel || (rooms !== 1 && rooms !== 2) || !isFiniteNumber(flags)) {
+    throw new Error("Ссылка повреждена: бюджет");
+  }
+  if (!isFiniteNumber(other) || !isFiniteNumber(reserve))
+    throw new Error("Ссылка повреждена: бюджет");
+  const budget: BudgetState = {
+    lodging: lodgingType,
+    rooms,
+    food: foodLevel,
+    coffee: (flags & 1) === 1,
+    finalNight: (flags & 2) === 2,
+    otherRub: other,
+    reservePct: reserve,
+  };
+  if (isFiniteNumber(roomPrice)) budget.roomPriceRub = roomPrice;
+  if (isFiniteNumber(foodPrice)) budget.foodPriceRub = foodPrice;
+  if (isFiniteNumber(coffeePrice)) budget.coffeePriceRub = coffeePrice;
+  return budget;
+}
 
 function pack(state: RouteState): Packed {
   let prevLat = 0;
@@ -97,12 +199,13 @@ function pack(state: RouteState): Packed {
       pr.dailyLimitH,
       pr.heavyDayKm,
     ],
-    state.split.mode === "km" ? state.split.maxKmPerDay : 0,
+    packSplit(state.split),
     state.currency === "USD" ? 1 : 0,
     state.fuelType,
     state.fuelPriceRub ?? null,
     state.rubPerUsd ?? null,
-  ];
+    ...(state.budget ? [packBudget(state.budget)] : []),
+  ] as Packed;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -110,7 +213,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 function unpack(raw: unknown): RouteState {
-  if (!Array.isArray(raw) || raw[0] !== STATE_VERSION || raw.length !== 12) {
+  if (!Array.isArray(raw) || raw[0] !== STATE_VERSION || (raw.length !== 12 && raw.length !== 13)) {
     throw new Error("Ссылка повреждена или создана другой версией сервиса");
   }
   const [
@@ -126,6 +229,7 @@ function unpack(raw: unknown): RouteState {
     fuelType,
     price,
     rate,
+    budget,
   ] = raw as Packed;
   if (!Array.isArray(points) || !Array.isArray(profile) || profile.length !== 10) {
     throw new Error("Ссылка повреждена");
@@ -145,7 +249,7 @@ function unpack(raw: unknown): RouteState {
   const [presetId, tankL, consumption, motorway, trunk, regional, local, limitKm, limitH, heavyKm] =
     profile;
   const numbers = [tankL, consumption, motorway, trunk, regional, local, limitKm, limitH, heavyKm];
-  if (typeof presetId !== "string" || !numbers.every(isFiniteNumber) || !isFiniteNumber(split)) {
+  if (typeof presetId !== "string" || !numbers.every(isFiniteNumber)) {
     throw new Error("Ссылка повреждена: параметры");
   }
   if (
@@ -172,12 +276,13 @@ function unpack(raw: unknown): RouteState {
       dailyLimitH: limitH,
       heavyDayKm: heavyKm,
     },
-    split: split > 0 ? { mode: "km", maxKmPerDay: split } : { mode: "manual" },
+    split: unpackSplit(split),
     currency: currency === 1 ? "USD" : "RUB",
     fuelType: fuelType as RouteState["fuelType"],
   };
   if (isFiniteNumber(price)) state.fuelPriceRub = price;
   if (isFiniteNumber(rate)) state.rubPerUsd = rate;
+  if (budget !== undefined) state.budget = unpackBudget(budget);
   return state;
 }
 

@@ -65,6 +65,15 @@ describe("состояние планировщика", () => {
     expect(s.split).toEqual({ mode: "km", maxKmPerDay: 450 });
   });
 
+  it("режим по времени берёт лимит часов из пресета", () => {
+    let s = reducer(withPoints(), {
+      type: "set",
+      patch: { split: { mode: "hours", maxHoursPerDay: 7 } },
+    });
+    s = reducer(s, { type: "preset", id: "beginner" });
+    expect(s.split).toEqual({ mode: "hours", maxHoursPerDay: 6 });
+  });
+
   it("сброс изменённой цены", () => {
     let s = reducer(withPoints(), { type: "set", patch: { fuelPriceRub: 80 } });
     expect(s.fuelPriceRub).toBe(80);

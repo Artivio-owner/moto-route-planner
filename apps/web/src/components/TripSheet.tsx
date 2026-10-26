@@ -1,4 +1,4 @@
-import type { Currency } from "@versta/calc";
+import { formatLocalTime, type Currency } from "@versta/calc";
 import {
   formatDate,
   formatHours,
@@ -8,7 +8,9 @@ import {
   money,
   pluralDays,
 } from "../lib/format";
+import type { DayWeather } from "../lib/api";
 import type { PlanResult } from "../lib/plan";
+import { describeWeather, weatherSource, weatherWarnings } from "../lib/weather";
 
 export interface DayLabel {
   from: string;
@@ -18,6 +20,7 @@ export interface DayLabel {
 interface Props {
   result: PlanResult | null;
   dayLabels: DayLabel[];
+  weather: (DayWeather | null)[];
   currency: Currency;
   loading: boolean;
   error: string;
@@ -32,6 +35,7 @@ interface Props {
 export function TripSheet({
   result,
   dayLabels,
+  weather,
   currency,
   loading,
   error,
@@ -97,6 +101,7 @@ export function TripSheet({
       <p className="hint">
         Запас хода около {formatKm(plan.rangeKm)}. Ночей в пути: {plan.nights}.
       </p>
+      <BudgetSummary result={result} currency={currency} />
       {longRoute && (
         <p className="warning">
           Длинный маршрут: пересчёт и PDF займут больше времени. Ограничений по длине нет.
@@ -125,6 +130,7 @@ export function TripSheet({
       <ol className="days" aria-label="Дни поездки">
         {plan.days.map((day, i) => {
           const label = dayLabels[i];
+          const w = weather[i];
           return (
             <li key={day.number} className="day">
               <div className="day-title">
@@ -144,6 +150,8 @@ export function TripSheet({
               <div className="day-meta">
                 <span>старт {localTimeWithZone(day.departure, day.startTimeZone)}</span>
                 <span>финиш {localTimeWithZone(day.arrival, day.endTimeZone)}</span>
+                {day.sunset && <span>закат {formatLocalTime(day.sunset, day.endTimeZone)}</span>}
+                {day.polar === "day" && <span>полярный день</span>}
                 {day.zoneShiftH !== 0 && (
                   <span>
                     пояс {day.zoneShiftH > 0 ? "+" : ""}
@@ -157,6 +165,19 @@ export function TripSheet({
                   {day.hasFerry && <span className="mark">паром</span>}
                 </div>
               )}
+              {w && (
+                <div className="day-meta">
+                  <span>
+                    {describeWeather(w)} <span className="mark">{weatherSource(w)}</span>
+                  </span>
+                </div>
+              )}
+              {w &&
+                weatherWarnings(w).map((text) => (
+                  <p key={text} className="warning">
+                    {text}
+                  </p>
+                ))}
               {day.warnings.map((w) => (
                 <p key={w.kind} className="warning">
                   {w.message}
@@ -169,6 +190,53 @@ export function TripSheet({
       <p className="hint">
         Расчёты ориентировочные: цены, дороги и погода меняются. Проверяйте маршрут перед выездом.
       </p>
+      {weather.some(Boolean) && (
+        <p className="hint">
+          Погода:{" "}
+          <a href="https://open-meteo.com/" rel="noopener">
+            Open-Meteo.com
+          </a>{" "}
+          (CC BY 4.0). Дальше 16 дней показываем климатическую норму за прошлые годы.
+        </p>
+      )}
     </section>
+  );
+}
+
+function BudgetSummary({ result, currency }: { result: PlanResult; currency: Currency }) {
+  const { budget, rubPerUsd } = result;
+  const m = (rub: number) => money(rub, currency, rubPerUsd);
+  const rows: [string, number][] = [
+    ["Топливо", budget.fuel],
+    [`Жильё, ночей: ${budget.nightsPaid}`, budget.lodging],
+    ["Еда", budget.food],
+    ["Кофе на заправках", budget.coffee],
+    ["Прочее", budget.other],
+    ["Резерв", budget.reserve],
+  ];
+  return (
+    <details className="budget" open>
+      <summary>
+        <span className="figure">{m(budget.total)}</span>{" "}
+        <span className="figure-label">бюджет поездки</span>{" "}
+        <span className="mark">ориентировочно</span>
+      </summary>
+      <table className="budget-table">
+        <tbody>
+          {rows
+            .filter(([, value]) => value > 0)
+            .map(([label, value]) => (
+              <tr key={label}>
+                <td>{label}</td>
+                <td>{m(value)}</td>
+              </tr>
+            ))}
+          <tr>
+            <td>На человека</td>
+            <td>{m(budget.perPerson)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </details>
   );
 }

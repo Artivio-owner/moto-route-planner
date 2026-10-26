@@ -1,6 +1,13 @@
 // Состояние планировщика и действия над ним.
-import type { ProfileState, RoutePoint, RouteState } from "@versta/route-format";
-import { defaultFuel, presets, presetToProfile, tripDefaults, type FuelType } from "../config";
+import type { BudgetState, ProfileState, RoutePoint, RouteState } from "@versta/route-format";
+import {
+  defaultBudget,
+  defaultFuel,
+  presets,
+  presetToProfile,
+  tripDefaults,
+  type FuelType,
+} from "../config";
 
 export interface EditablePoint {
   id: string;
@@ -23,6 +30,7 @@ export interface PlannerState {
   fuelType: FuelType;
   fuelPriceRub?: number;
   rubPerUsd?: number;
+  budget: BudgetState;
 }
 
 export const CUSTOM_PRESET = "custom";
@@ -33,6 +41,23 @@ export const newId = (): string => `p${Date.now().toString(36)}${(idCounter++).t
 export function todayIso(now = new Date()): string {
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 10);
+}
+
+/** Разбивка по умолчанию для режима: лимиты берутся из пресета. */
+export function defaultSplit(
+  mode: PlannerState["split"]["mode"],
+  profile: { dailyLimitKm: number; dailyLimitH: number },
+): PlannerState["split"] {
+  switch (mode) {
+    case "km":
+      return { mode, maxKmPerDay: profile.dailyLimitKm };
+    case "hours":
+      return { mode, maxHoursPerDay: profile.dailyLimitH };
+    case "days":
+      return { mode, days: tripDefaults.split.days };
+    case "manual":
+      return { mode };
+  }
 }
 
 export function initialState(now = new Date()): PlannerState {
@@ -50,12 +75,10 @@ export function initialState(now = new Date()): PlannerState {
     motorcycles: tripDefaults.motorcycles,
     profile: presetToProfile(preset),
     // Дневная норма берётся из пресета: иначе каждый день сразу превышал бы его лимит.
-    split:
-      tripDefaults.split.mode === "manual"
-        ? { mode: "manual" }
-        : { mode: "km", maxKmPerDay: preset.dailyLimitKm },
+    split: defaultSplit(tripDefaults.split.mode, preset),
     currency: tripDefaults.currency,
     fuelType: defaultFuel,
+    budget: defaultBudget(),
   };
 }
 
@@ -85,6 +108,7 @@ export function toRouteState(state: PlannerState): RouteState {
     split: state.split,
     currency: state.currency,
     fuelType: state.fuelType,
+    budget: state.budget,
   };
   if (state.fuelPriceRub !== undefined) route.fuelPriceRub = state.fuelPriceRub;
   if (state.rubPerUsd !== undefined) route.rubPerUsd = state.rubPerUsd;
@@ -98,7 +122,7 @@ export function fromRouteState(route: RouteState): PlannerState {
     return point;
   });
   while (points.length < 2) points.push({ id: newId(), name: "" });
-  const state: PlannerState = { ...route, points };
+  const state: PlannerState = { ...route, points, budget: route.budget ?? defaultBudget() };
   return state;
 }
 
@@ -117,6 +141,8 @@ export type Action =
   | { type: "toggleOvernight"; id: string }
   | { type: "set"; patch: Partial<Omit<PlannerState, "points" | "profile">> }
   | { type: "resetPrice"; field: "fuelPriceRub" | "rubPerUsd" }
+  | { type: "budget"; patch: Partial<BudgetState> }
+  | { type: "resetBudgetPrice"; field: "roomPriceRub" | "foodPriceRub" | "coffeePriceRub" }
   | { type: "preset"; id: string }
   | { type: "profileField"; field: ProfileField; value: number }
   | { type: "speed"; field: SpeedField; value: number };
@@ -201,12 +227,17 @@ export function reducer(state: PlannerState, action: Action): PlannerState {
     }
     case "resetPrice":
       return withoutKey(state, action.field);
+    case "budget":
+      return { ...state, budget: { ...state.budget, ...action.patch } };
+    case "resetBudgetPrice":
+      return { ...state, budget: withoutKey(state.budget, action.field) };
     case "preset": {
       const preset = presets.find((p) => p.id === action.id);
       if (!preset) return { ...state, profile: { ...state.profile, presetId: CUSTOM_PRESET } };
+      // Лимиты разбивки по км и по часам следуют за пресетом.
       const split =
-        state.split.mode === "km"
-          ? { mode: "km" as const, maxKmPerDay: preset.dailyLimitKm }
+        state.split.mode === "km" || state.split.mode === "hours"
+          ? defaultSplit(state.split.mode, preset)
           : state.split;
       return {
         ...state,

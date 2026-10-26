@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Бюджет: значения по умолчанию",
+  "type": "object",
+  "required": ["updated", "lodging", "food", "coffee", "reservePct", "finalNight"],
+  "additionalProperties": false,
+  "properties": {
+    "updated": {
+      "type": "string",
+      "format": "date"
+    },
+    "note": {
+      "type": "string"
+    },
+    "lodging": {
+      "type": "object",
+      "required": ["type", "pricePerRoomRub"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": ["hotel3", "hotel4", "hotel5", "guesthouse", "camping"]
+        },
+        "pricePerRoomRub": {
+          "type": "object",
+          "required": ["hotel3", "hotel4", "hotel5", "guesthouse", "camping"],
+          "additionalProperties": false,
+          "properties": {
+            "hotel3": {
+              "$ref": "#/definitions/rub"
+            },
+            "hotel4": {
+              "$ref": "#/definitions/rub"
+            },
+            "hotel5": {
+              "$ref": "#/definitions/rub"
+            },
+            "guesthouse": {
+              "$ref": "#/definitions/rub"
+            },
+            "camping": {
+              "$ref": "#/definitions/rub"
+            }
+          }
+        }
+      }
+    },
+    "food": {
+      "type": "object",
+      "required": ["level", "perPersonDayRub"],
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "enum": ["economy", "medium", "high"]
+        },
+        "perPersonDayRub": {
+          "type": "object",
+          "required": ["economy", "medium", "high"],
+          "additionalProperties": false,
+          "properties": {
+            "economy": {
+              "$ref": "#/definitions/rub"
+            },
+            "medium": {
+              "$ref": "#/definitions/rub"
+            },
+            "high": {
+              "$ref": "#/definitions/rub"
+            }
+          }
+        }
+      }
+    },
+    "coffee": {
+      "type": "object",
+      "required": ["enabled", "priceRub"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "priceRub": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000
+        }
+      }
+    },
+    "reservePct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "finalNight": {
+      "type": "boolean"
+    }
+  },
+  "definitions": {
+    "rub": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1000000
+    }
+  }
+}

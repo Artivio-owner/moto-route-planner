@@ -74,6 +74,9 @@ jobs:
   browser:
     name: Браузерные тесты
     runs-on: ubuntu-latest
+    # Готовый образ с Chromium и системными библиотеками: установка через apt бывает очень медленной.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -82,7 +85,6 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm --filter @versta/web build
       - run: pnpm --filter @versta/web e2e
       - uses: actions/upload-artifact@v4
