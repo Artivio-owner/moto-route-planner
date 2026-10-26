@@ -131,3 +131,26 @@ describe("раздача веб-приложения", () => {
     expect((await app.inject({ method: "GET", url: "/api/nope" })).json().error).toBe("not_found");
   });
 });
+
+describe("тайлы", () => {
+  it("отдаёт PMTiles кусками по Range", async () => {
+    const { mkdtempSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const dir = mkdtempSync(`${tmpdir()}/versta-tiles-`);
+    writeFileSync(`${dir}/region.pmtiles`, Buffer.from("0123456789"));
+    const geocoder: GeocoderClient = { search: async () => [], reverse: async () => null };
+    const graphhopper: GraphHopperClient = { leg: async () => fakeLeg(1) };
+    const app = buildServer({
+      config: { routeRateLimit: 10, tilesDir: dir },
+      graphhopper,
+      geocoder,
+    });
+    const part = await app.inject({
+      method: "GET",
+      url: "/tiles/region.pmtiles",
+      headers: { range: "bytes=2-4" },
+    });
+    expect(part.statusCode).toBe(206);
+    expect(part.body).toBe("234");
+  });
+});

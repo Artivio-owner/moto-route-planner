@@ -89,3 +89,16 @@ jobs:
         with:
           name: playwright-report
           path: apps/web/test-results
+
+  docker:
+    name: Сборка образов
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Образ приложения
+        run: docker build -f infra/app.Dockerfile -t versta-app .
+      - name: Образ GraphHopper
+        run: docker build -t versta-graphhopper infra/graphhopper
+      - name: Проверка docker compose
+        working-directory: infra
+        run: docker compose config --quiet

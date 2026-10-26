@@ -30,7 +30,7 @@ export interface RouteResponse {
 }
 
 export interface Dependencies {
-  config: Pick<ApiConfig, "routeRateLimit" | "webDir">;
+  config: Pick<ApiConfig, "routeRateLimit" | "webDir" | "tilesDir">;
   graphhopper: GraphHopperClient;
   geocoder: GeocoderClient;
 }
@@ -183,6 +183,16 @@ export function buildServer(deps: Dependencies): FastifyInstance {
       place: await deps.geocoder.reverse(request.query.lat, request.query.lon),
     }),
   );
+
+  if (deps.config.tilesDir) {
+    // PMTiles читается кусками через HTTP Range; @fastify/static поддерживает Range.
+    app.register(fastifyStatic, {
+      root: deps.config.tilesDir,
+      prefix: "/tiles/",
+      decorateReply: false,
+      maxAge: "7d",
+    });
+  }
 
   if (deps.config.webDir) {
     app.register(fastifyStatic, { root: deps.config.webDir, redirect: true });
