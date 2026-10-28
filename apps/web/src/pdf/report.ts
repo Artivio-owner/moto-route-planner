@@ -15,7 +15,7 @@ import {
   money,
   pluralDays,
 } from "../lib/format";
-import { bounds, pointAtKm, type PlanResult } from "../lib/plan";
+import { bounds, pointAtKm, sliceLine, type PlanResult } from "../lib/plan";
 import { CUSTOM_PRESET, completePoints, routeTitle, type PlannerState } from "../state/planner";
 import { presets } from "../config";
 import { donate as donateConfig, donateEnabled, donateQrForPdf, type PdfQr } from "../lib/donate";
@@ -57,6 +57,8 @@ const C = {
 };
 
 const A4 = { w: 595.28, h: 841.89 };
+/** Снимков карты дня не больше этого числа: дальше схема, чтобы PDF не собирался минутами. */
+const MAX_DAY_SNAPSHOTS = 30;
 const M = 40;
 
 async function loadFont(path: string): Promise<Uint8Array> {
@@ -533,6 +535,52 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
     { size: 8, color: C.muted },
   );
 
+  // 5. Карты по дням (v0.3): снимок на наших тайлах или схема без WebGL.
+  const ridingDays = plan.days.flatMap((day, i) => (day.rest ? [] : [{ day, i }]));
+  if (ridingDays.length > 1) {
+    const gap = 12;
+    const cellW = (A4.w - 2 * M - gap) / 2;
+    const cellH = cellW * 0.66;
+    w.ensure(cellH + 60);
+    w.heading("Карты по дням");
+    let daySnapshots = !input.skipMapSnapshot && snapshot !== null;
+    for (let k = 0; k < ridingDays.length; k += 2) {
+      w.ensure(cellH + 30);
+      const top = w.y;
+      for (const [col, item] of ridingDays.slice(k, k + 2).entries()) {
+        const { day, i } = item;
+        const x = M + col * (cellW + gap);
+        const label = dayLabels[i];
+        const title = `День ${day.number}: ${label ? `${label.from} — ${label.to}` : ""}, ${formatKm(day.distanceKm)}`;
+        const titleLine = w.wrap(title, bold, 8.5, cellW)[0] ?? "";
+        w.page.drawText(titleLine, { x, y: top - 10, size: 8.5, font: bold, color: C.ink });
+        const part = sliceLine(line, day.startKm, day.endKm);
+        const snapshot =
+          !daySnapshots || k + col >= MAX_DAY_SNAPSHOTS
+            ? null
+            : await mapSnapshot(part, [], Math.round(cellW * 4), Math.round(cellH * 4), 6000);
+        // Не вышло один раз (нет WebGL или тайлов): остальные дни сразу схемой.
+        if (!snapshot) daySnapshots = false;
+        const y = top - 16 - cellH;
+        if (snapshot) {
+          const image = await doc.embedPng(snapshot.png);
+          w.page.drawImage(image, { x, y, width: cellW, height: cellH });
+          w.page.drawRectangle({
+            x,
+            y,
+            width: cellW,
+            height: cellH,
+            borderColor: C.line,
+            borderWidth: 1,
+          });
+        } else {
+          drawRouteSchema(w.page, part, [], x, y, cellW, cellH);
+        }
+      }
+      w.y = top - cellH - 26;
+    }
+  }
+
   // Километраж по дням.
   if (plan.days.length > 1) {
     const chartH = 130;
@@ -584,6 +632,119 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
       size: 8,
       color: C.muted,
     });
+  }
+
+  // 6. Графики: структура бюджета (v0.2).
+  const parts: [string, number, RGB][] = (
+    [
+      ["Топливо", result.budget.fuel, C.primary],
+      ["Жильё", result.budget.lodging, C.accent],
+      ["Еда", result.budget.food, hex("#7A9A5B")],
+      ["Кофе", result.budget.coffee, hex("#8C6A43")],
+      ["Прочее", result.budget.other, hex("#B9A77E")],
+      ["Резерв", result.budget.reserve, C.muted],
+    ] as [string, number, RGB][]
+  ).filter(([, v]) => v > 0);
+  const budgetTotal = parts.reduce((sum, [, v]) => sum + v, 0);
+  if (budgetTotal > 0) {
+    w.ensure(110);
+    w.heading("Структура бюджета");
+    const barW = A4.w - 2 * M;
+    let x = M;
+    const top = w.y;
+    for (const [, value, color] of parts) {
+      const width = (value / budgetTotal) * barW;
+      w.page.drawRectangle({ x, y: top - 22, width, height: 22, color });
+      x += width;
+    }
+    let lx = M;
+    let ly = top - 38;
+    for (const [label, value, color] of parts) {
+      const text = `${label}: ${m(value)} (${Math.round((value / budgetTotal) * 100)}%)`;
+      const tw = regular.widthOfTextAtSize(text, 8) + 22;
+      if (lx + tw > A4.w - M) {
+        lx = M;
+        ly -= 13;
+      }
+      w.page.drawRectangle({ x: lx, y: ly - 1, width: 8, height: 8, color });
+      w.page.drawText(text, { x: lx + 12, y: ly, size: 8, font: regular, color: C.ink });
+      lx += tw;
+    }
+    w.y = ly - 16;
+  }
+
+  // 6. Графики: уровень топлива по маршруту. Старт с полным баком, заправка до полного
+  // в точках из расчёта (через запас хода с резервом 10%).
+  const fullRangeKm = (state.profile.tankL / state.profile.consumptionLPer100Km) * 100;
+  if (plan.distanceKm > 0 && fullRangeKm > 0) {
+    const chartH = 90;
+    w.ensure(chartH + 70);
+    w.heading("Уровень топлива");
+    const chartW = A4.w - 2 * M;
+    const top = w.y;
+    const xAt = (km: number) => M + (km / plan.distanceKm) * chartW;
+    const yAt = (level: number) => top - chartH + level * chartH;
+    w.page.drawRectangle({
+      x: M,
+      y: top - chartH,
+      width: chartW,
+      height: chartH,
+      color: C.surface,
+      borderColor: C.line,
+      borderWidth: 0.6,
+    });
+    const reserve = 1 - plan.rangeKm / fullRangeKm;
+    w.page.drawLine({
+      start: { x: M, y: yAt(reserve) },
+      end: { x: M + chartW, y: yAt(reserve) },
+      thickness: 0.6,
+      color: C.accentInk,
+      dashArray: [3, 3],
+    });
+    w.page.drawText(`резерв ${Math.round(reserve * 100)}%`, {
+      x: M + 4,
+      y: yAt(reserve) + 3,
+      size: 7,
+      font: regular,
+      color: C.accentInk,
+    });
+    const stops = plan.days.flatMap((d) => d.fuelStopsKm);
+    let last = 0;
+    for (const stop of [...stops, plan.distanceKm]) {
+      const level = Math.max(0, 1 - (stop - last) / fullRangeKm);
+      w.page.drawLine({
+        start: { x: xAt(last), y: yAt(1) },
+        end: { x: xAt(stop), y: yAt(level) },
+        thickness: 1.2,
+        color: C.primary,
+      });
+      if (stop < plan.distanceKm)
+        w.page.drawLine({
+          start: { x: xAt(stop), y: yAt(level) },
+          end: { x: xAt(stop), y: yAt(1) },
+          thickness: 0.8,
+          color: C.primary,
+        });
+      last = stop;
+    }
+    for (const [km, align] of [
+      [0, 0],
+      [plan.distanceKm, 1],
+    ] as const) {
+      const label = formatKm(km);
+      w.page.drawText(label, {
+        x: xAt(km) - align * regular.widthOfTextAtSize(label, 7),
+        y: top - chartH - 9,
+        size: 7,
+        font: regular,
+        color: C.muted,
+      });
+    }
+    w.y -= chartH + 22;
+    w.text(
+      `Полный бак ${state.profile.tankL} л хватает примерно на ${formatKm(fullRangeKm)}; заправок: ${stops.length}. Вертикальные линии: заправки до полного бака.`,
+      { size: 8, color: C.muted },
+    );
   }
 
   // 8. Погода: прогноз до 16 дней, дальше климатическая норма с пометкой.
