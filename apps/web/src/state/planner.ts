@@ -143,6 +143,8 @@ export type Action =
   | { type: "movePoint"; id: string; delta: -1 | 1 }
   | { type: "toggleOvernight"; id: string }
   | { type: "toggleRest"; afterDay: number }
+  | { type: "renameAt"; lat: number; lon: number; name: string }
+  | { type: "importPoints"; points: { name: string; lat: number; lon: number }[] }
   | { type: "set"; patch: Partial<Omit<PlannerState, "points" | "profile">> }
   | { type: "resetPrice"; field: "fuelPriceRub" | "rubPerUsd" }
   | { type: "budget"; patch: Partial<BudgetState> }
@@ -219,6 +221,33 @@ export function reducer(state: PlannerState, action: Action): PlannerState {
         ...state,
         points: state.points.map((p) =>
           p.id === action.id ? { ...p, overnight: !p.overnight } : p,
+        ),
+      };
+    case "importPoints": {
+      // Импорт GPX (X-05): точки заменяют маршрут; замкнутый трек становится «с возвратом».
+      const pts = [...action.points];
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const loop =
+        pts.length >= 3 &&
+        first !== undefined &&
+        last !== undefined &&
+        Math.abs(first.lat - last.lat) < 0.003 &&
+        Math.abs(first.lon - last.lon) < 0.005;
+      if (loop) pts.pop();
+      if (pts.length < 2) return state;
+      const next: PlannerState = {
+        ...state,
+        roundTrip: loop,
+        points: pts.map((p) => ({ id: newId(), name: p.name, lat: p.lat, lon: p.lon })),
+      };
+      return withoutKey(next, "restAfterDays");
+    }
+    case "renameAt":
+      return {
+        ...state,
+        points: state.points.map((p) =>
+          p.lat === action.lat && p.lon === action.lon ? { ...p, name: action.name } : p,
         ),
       };
     case "toggleRest": {

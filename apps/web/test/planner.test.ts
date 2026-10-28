@@ -87,4 +87,22 @@ describe("состояние планировщика", () => {
     const back = fromRouteState(toRouteState(s));
     expect(toRouteState(back)).toEqual(toRouteState(s));
   });
+
+  it("импорт GPX: точки заменяют маршрут, замкнутый трек становится «с возвратом»", () => {
+    let s = initialState();
+    s = reducer(s, { type: "toggleRest", afterDay: 1 });
+    const pts = [
+      { name: "A", lat: 55, lon: 37 },
+      { name: "B", lat: 56, lon: 38 },
+      { name: "A2", lat: 55.001, lon: 37.001 },
+    ];
+    const loop = reducer(s, { type: "importPoints", points: pts });
+    expect(loop.points.map((p) => p.name)).toEqual(["A", "B"]);
+    expect(loop.roundTrip).toBe(true);
+    expect(loop.restAfterDays).toBeUndefined();
+    const open = reducer(s, { type: "importPoints", points: pts.slice(0, 2) });
+    expect(open.roundTrip).toBe(false);
+    const renamed = reducer(open, { type: "renameAt", lat: 56, lon: 38, name: "Тверь" });
+    expect(renamed.points[1]?.name).toBe("Тверь");
+  });
 });

@@ -1,14 +1,17 @@
-import type { Dispatch } from "react";
+import { useRef, type Dispatch } from "react";
 import { isComplete, type Action, type PlannerState } from "../state/planner";
 import { PlaceInput } from "./PlaceInput";
 
 interface Props {
   state: PlannerState;
   dispatch: Dispatch<Action>;
+  /** Загрузка GPX-файла (X-05). */
+  onGpxFile(file: File): void;
 }
 
 /** Точки маршрута: откуда, через, куда (R-03, R-05, R-06). */
-export function PointsCard({ state, dispatch }: Props) {
+export function PointsCard({ state, dispatch, onGpxFile }: Props) {
+  const fileInput = useRef<HTMLInputElement>(null);
   const last = state.points.length - 1;
   const manual = state.split.mode === "manual";
   return (
@@ -92,6 +95,25 @@ export function PointsCard({ state, dispatch }: Props) {
         >
           + Промежуточная точка
         </button>
+        <button
+          type="button"
+          className="btn ghost small"
+          onClick={() => fileInput.current?.click()}
+        >
+          Загрузить GPX
+        </button>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".gpx,application/gpx+xml"
+          aria-label="GPX-файл"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onGpxFile(file);
+            e.target.value = "";
+          }}
+        />
         <label className="row">
           <input
             type="checkbox"
