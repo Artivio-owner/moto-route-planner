@@ -10,7 +10,14 @@ import {
 } from "../lib/format";
 import type { DayWeather } from "../lib/api";
 import { DonateBlock } from "./DonateBlock";
-import type { ElevationStats, PlanResult } from "../lib/plan";
+import {
+  describeLodging,
+  fuelStationsBetween,
+  lodgingNear,
+  type ElevationStats,
+  type PlanResult,
+} from "../lib/plan";
+import type { RoutePoi } from "../lib/api";
 import { describeWeather, weatherSource, weatherWarnings } from "../lib/weather";
 
 export interface DayLabel {
@@ -36,6 +43,8 @@ interface Props {
   offlineSavedAt?: number | undefined;
   /** Набор высоты по дням и за поездку (E-01); null без данных высот. */
   elevation?: { days: (ElevationStats | null)[]; total: ElevationStats | null };
+  /** АЗС и жильё вдоль маршрута (v0.3); нет без слоя POI на сервере. */
+  pois?: RoutePoi[] | undefined;
 }
 
 /** Путевой лист в интерфейсе: сводка, дни, предупреждения, действия. */
@@ -54,6 +63,7 @@ export function TripSheet({
   onToggleRest,
   offlineSavedAt,
   elevation,
+  pois,
 }: Props) {
   if (error) {
     return (
@@ -121,7 +131,9 @@ export function TripSheet({
         </div>
       </div>
       <p className="hint">
-        Запас хода около {formatKm(plan.rangeKm)}. Ночей в пути: {plan.nights}
+        Запас хода около {formatKm(plan.rangeKm)}
+        {plan.fuelStopsAtStations ? ", заправки на АЗС из OpenStreetMap" : ""}. Ночей в пути:{" "}
+        {plan.nights}
         {plan.restDays > 0 ? `, из них дневок: ${plan.restDays}` : ""}.
         {elevation?.total &&
           ` Набор высоты ${Math.round(elevation.total.ascentM)} м, высоты от ${Math.round(elevation.total.minM)} до ${Math.round(elevation.total.maxM)} м.`}
@@ -207,6 +219,9 @@ export function TripSheet({
                 <span>{formatKm(day.distanceKm)}</span>
                 <span>в пути {formatHours(day.totalH)}</span>
                 <span>заправок {day.fuelStopsKm.length}</span>
+                {fuelStationsBetween(pois, day.startKm, day.endKm) !== null && (
+                  <span>АЗС на участке {fuelStationsBetween(pois, day.startKm, day.endKm)}</span>
+                )}
                 {elevation?.days[i] && (
                   <span>набор {Math.round(elevation.days[i]?.ascentM ?? 0)} м</span>
                 )}
@@ -248,6 +263,11 @@ export function TripSheet({
                   {w.message}
                 </p>
               ))}
+              {!isLastRiding && lodgingNear(pois, day.endKm).length > 0 && (
+                <div className="day-lodging">
+                  Ночлег у финиша: {lodgingNear(pois, day.endKm).map(describeLodging).join("; ")}
+                </div>
+              )}
               {!isLastRiding && !restNext && (
                 <button
                   type="button"

@@ -9,8 +9,11 @@ services:
       GRAPHHOPPER_URL: http://graphhopper:8989
       PHOTON_URL: http://photon:2322
       ROUTE_RATE_LIMIT: ${ROUTE_RATE_LIMIT:-60}
+      # АЗС и жильё вдоль маршрута (ADR-0017); без файла слой просто выключен.
+      POI_FILE: /pois/pois.geojsonseq
     volumes:
       - ${DATA_DIR:-./data}/tiles:/tiles:ro
+      - ${DATA_DIR:-./data}/pois:/pois:ro
     depends_on:
       - graphhopper
     restart: unless-stopped

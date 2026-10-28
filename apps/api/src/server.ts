@@ -8,6 +8,7 @@ import { UserFacingError } from "./errors.js";
 import type { LonLat } from "./geometry.js";
 import type { GraphHopperClient, LatLon, LegResult } from "./graphhopper.js";
 import type { GeocoderClient } from "./photon.js";
+import { dedupePois, type PoiIndex, type RoutePoi } from "./pois.js";
 import type { WeatherClient } from "./weather.js";
 import { zoneMarks } from "./zones.js";
 
@@ -34,6 +35,8 @@ export interface RouteResponse {
   legs: RouteLeg[];
   zones: ZoneMark[];
   distanceKm: number;
+  /** АЗС и жильё вдоль маршрута (v0.3); нет, если на сервере не загружен слой POI. */
+  pois?: RoutePoi[];
 }
 
 export interface Dependencies {
@@ -41,6 +44,7 @@ export interface Dependencies {
   graphhopper: GraphHopperClient;
   geocoder: GeocoderClient;
   weather?: WeatherClient;
+  pois?: PoiIndex;
 }
 
 const pointSchema = {
@@ -142,11 +146,13 @@ export function buildServer(deps: Dependencies): FastifyInstance {
       });
 
       const zones: ZoneMark[] = [];
+      const pois: RoutePoi[] = [];
       let offsetKm = 0;
       for (const leg of legs) {
         for (const mark of zoneMarks(leg.fullGeometry, leg.fullKm, offsetKm)) {
           if (zones[zones.length - 1]?.timeZone !== mark.timeZone) zones.push(mark);
         }
+        if (deps.pois) pois.push(...deps.pois.alongRoute(leg.fullGeometry, leg.fullKm, offsetKm));
         offsetKm += leg.distanceKm;
       }
       return {
@@ -159,6 +165,8 @@ export function buildServer(deps: Dependencies): FastifyInstance {
         })),
         zones,
         distanceKm: offsetKm,
+        // Точка у стыка отрезков находится дважды: оставляем ближайшее к линии вхождение.
+        ...(deps.pois ? { pois: dedupePois(pois) } : {}),
       };
     },
   );

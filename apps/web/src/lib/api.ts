@@ -12,10 +12,27 @@ export interface RouteLeg {
   elevation?: number[];
 }
 
+export type PoiKind =
+  "fuel" | "hotel" | "motel" | "guest_house" | "hostel" | "camp_site" | "chalet";
+
+/** АЗС или жильё вдоль маршрута (v0.3, P-07). */
+export interface RoutePoi {
+  kind: PoiKind;
+  name: string;
+  lat: number;
+  lon: number;
+  /** Километр маршрута, у которого точка. */
+  km: number;
+  /** Удаление от линии маршрута, км. */
+  offKm: number;
+}
+
 export interface RouteResponse {
   legs: RouteLeg[];
   zones: ZoneMark[];
   distanceKm: number;
+  /** Нет, если на сервере не загружен слой АЗС и жилья. */
+  pois?: RoutePoi[];
 }
 
 export interface Place {

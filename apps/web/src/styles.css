@@ -467,6 +467,11 @@ select {
 .day-route {
   color: var(--muted);
 }
+.day-lodging {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 2px;
+}
 .day-meta {
   font-size: 13px;
   display: flex;

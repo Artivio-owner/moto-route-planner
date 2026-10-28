@@ -67,8 +67,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Сквозная проверка API
         run: |
+          # Слой АЗС и жилья (P-07): та же выгрузка, что в prepare-data.sh.
+          sudo apt-get install -y -qq osmium-tool > /dev/null
+          infra/scripts/extract-pois.sh /tmp/synthetic.osm /tmp/pois.geojsonseq
           pnpm --filter @versta/api build
-          PORT=8080 GRAPHHOPPER_URL=http://localhost:8989 node apps/api/dist/server.js > /tmp/api.log 2>&1 &
+          PORT=8080 GRAPHHOPPER_URL=http://localhost:8989 POI_FILE=/tmp/pois.geojsonseq \
+            node apps/api/dist/server.js > /tmp/api.log 2>&1 &
           for i in $(seq 1 30); do curl -sf -o /dev/null localhost:8080/api/health && break; sleep 1; done
           python3 apps/api/test/e2e_check.py
       - name: Журнал GraphHopper при ошибке

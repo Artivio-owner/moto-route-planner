@@ -23,8 +23,8 @@ export function cumulativeKm(points: readonly LonLat[]): number[] {
   return result;
 }
 
-/** Расстояние от точки до отрезка в плоской проекции около точки, км. */
-function pointToSegmentKm(p: LonLat, a: LonLat, b: LonLat): number {
+/** Расстояние от точки до отрезка и доля t (0…1) ближайшей точки на нём; локальная проекция. */
+export function projectToSegment(p: LonLat, a: LonLat, b: LonLat): { km: number; t: number } {
   const kx = 111.32 * Math.cos((p[1] * Math.PI) / 180);
   const ky = 110.574;
   const [px, py] = [p[0] * kx, p[1] * ky];
@@ -34,7 +34,11 @@ function pointToSegmentKm(p: LonLat, a: LonLat, b: LonLat): number {
   const dy = by - ay;
   const len2 = dx * dx + dy * dy;
   const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2));
-  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  return { km: Math.hypot(px - (ax + t * dx), py - (ay + t * dy)), t };
+}
+
+function pointToSegmentKm(p: LonLat, a: LonLat, b: LonLat): number {
+  return projectToSegment(p, a, b).km;
 }
 
 /** Индексы точек, оставшихся после упрощения Дугласа — Пекера с допуском toleranceKm. */

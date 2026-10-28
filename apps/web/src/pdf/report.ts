@@ -15,9 +15,13 @@ import {
   money,
   pluralDays,
 } from "../lib/format";
+import type { RoutePoi } from "../lib/api";
 import {
   bounds,
+  describeLodging,
   elevationStats,
+  fuelStationsBetween,
+  lodgingNear,
   pointAtKm,
   sliceLine,
   type PlanResult,
@@ -40,6 +44,8 @@ export interface ReportInput {
   donate?: { label: string; url: string; qr: PdfQr | null } | null;
   /** Для тестов: не пытаться рисовать карту через WebGL. */
   skipMapSnapshot?: boolean;
+  /** АЗС и жильё вдоль маршрута (v0.3, P-07); нет без слоя POI на сервере. */
+  pois?: RoutePoi[] | undefined;
   fonts?: { regular: Uint8Array; bold: Uint8Array };
   now?: Date;
 }
@@ -464,8 +470,13 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
   plan.days.forEach((day, i) => {
     const label = dayLabels[i];
     const ele = day.rest ? null : elevationStats(line, day.startKm, day.endKm);
+    const stations = day.rest ? null : fuelStationsBetween(input.pois, day.startKm, day.endKm);
+    const isLastRiding = !plan.days.slice(i + 1).some((d) => !d.rest);
+    const lodging = day.rest || isLastRiding ? [] : lodgingNear(input.pois, day.endKm);
     const notes = [
       ele ? `набор высоты ${Math.round(ele.ascentM)} м` : "",
+      stations !== null ? `АЗС на участке: ${stations}` : "",
+      lodging.length ? `ночлег у финиша: ${lodging.map(describeLodging).join("; ")}` : "",
       day.hasToll ? "платный участок" : "",
       day.hasFerry ? "паром" : "",
       day.zoneShiftH ? `пояс ${day.zoneShiftH > 0 ? "+" : ""}${day.zoneShiftH} ч` : "",

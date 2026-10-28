@@ -27,6 +27,9 @@ checks = {
     "объезд длиннее": free["distanceKm"] > route["distanceKm"],
     "высоты (E-01): есть у каждой точки": all(len(l.get("elevation", [])) == len(l["geometry"]) for l in route["legs"]),
     "высоты (E-01): перевал из тестового SRTM": max(e for l in route["legs"] for e in l.get("elevation", [0])) > 300,
+    "АЗС вдоль маршрута (P-07)": any(p["kind"] == "fuel" and p["name"] == "АЗС у Объезда" for p in route.get("pois", [])),
+    "гостиница рядом с дорогой (P-07)": any(p["kind"] == "hotel" for p in route.get("pois", [])),
+    "дальний кемпинг не попал": not any(p["kind"] == "camp_site" for p in route.get("pois", [])),
 }
 for name, ok in checks.items():
     print(("ок      " if ok else "ОШИБКА  ") + name)

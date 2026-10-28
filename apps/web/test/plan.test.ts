@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { computePlan, elevationStats, pointAtKm, routeLine, sliceLine } from "../src/lib/plan";
+import {
+  computePlan,
+  describeLodging,
+  elevationStats,
+  fuelStationsBetween,
+  lodgingNear,
+  pointAtKm,
+  routeLine,
+  sliceLine,
+} from "../src/lib/plan";
 import { initialState, reducer } from "../src/state/planner";
 import { route } from "./fixtures";
 
@@ -101,5 +110,27 @@ describe("расчёт плана из ответа API", () => {
     expect(stats?.minM).toBe(100);
     expect(stats?.maxM).toBe(160);
     expect(stats?.ascentM).toBeGreaterThan(0);
+  });
+
+  it("АЗС и жильё (P-07): заправки на АЗС, ночлег у финиша, без слоя всё как раньше", () => {
+    const s = reducer(state(), { type: "set", patch: { split: { mode: "km", maxKmPerDay: 400 } } });
+    const pois = [
+      { kind: "fuel" as const, name: "Лукойл", lat: 55, lon: 40, km: 180, offKm: 0.1 },
+      { kind: "fuel" as const, name: "", lat: 55, lon: 41, km: 350, offKm: 0.2 },
+      { kind: "hotel" as const, name: "Дорожная", lat: 55, lon: 42, km: 395, offKm: 1.2 },
+      { kind: "camp_site" as const, name: "", lat: 55, lon: 42, km: 402, offKm: 0.1 },
+      { kind: "hostel" as const, name: "Далеко", lat: 55, lon: 43, km: 600, offKm: 0.1 },
+    ];
+    const result = computePlan(s, { ...route, pois });
+    expect(result.plan.fuelStopsAtStations).toBe(true);
+    expect(result.plan.days[0]?.fuelStopsKm[0]).toBe(180);
+    expect(computePlan(s, route).plan.fuelStopsAtStations).toBe(false);
+    expect(fuelStationsBetween(pois, 0, 400)).toBe(2);
+    expect(fuelStationsBetween(undefined, 0, 400)).toBeNull();
+    expect(lodgingNear(pois, 400).map((p) => p.kind)).toEqual(["camp_site", "hotel"]);
+    expect(describeLodging(pois[2] as (typeof pois)[number])).toBe(
+      "Дорожная (гостиница), 1,2 км от дороги",
+    );
+    expect(describeLodging(pois[3] as (typeof pois)[number])).toBe("Кемпинг, у дороги");
   });
 });

@@ -10,7 +10,15 @@ export {
 export type { CountryMark, PriceMark } from "./countries.js";
 export { dayBoundariesKm } from "./days.js";
 export type { Leg, SplitMode } from "./days.js";
-export { RANGE_RESERVE, fuelCost, fuelLiters, fuelStopsKm, rangeKm } from "./fuel.js";
+export {
+  RANGE_RESERVE,
+  fuelCost,
+  fuelLiters,
+  fuelStopsAtStations,
+  fuelStopsKm,
+  rangeKm,
+} from "./fuel.js";
+export type { FuelGap } from "./fuel.js";
 export { normalizeGroup } from "./group.js";
 export type { Count, Group } from "./group.js";
 export {

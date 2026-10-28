@@ -227,6 +227,31 @@ test("без сети: последний расчёт из сохранённо
   await expect(page.getByText(/День 1 ·/)).toBeVisible();
 });
 
+test("АЗС и ночлег вдоль маршрута (P-07)", async ({ page }) => {
+  await mockApi(page);
+  const withPois = JSON.parse(route) as Record<string, unknown>;
+  withPois.pois = [
+    { kind: "fuel", name: "Тест-АЗС", lat: 55, lon: 37.5, km: 30, offKm: 0.1 },
+    { kind: "guest_house", name: "Гостевой дом «Привал»", lat: 55, lon: 37.9, km: 88, offKm: 0.8 },
+  ];
+  await page.route("**/api/route", (r) =>
+    r.fulfill({ contentType: "application/json", body: JSON.stringify(withPois) }),
+  );
+  await page.goto("/plan");
+  await pick(page, "Откуда, точка 1", "Старт");
+  await pick(page, "Куда, точка 2", "Финиш");
+  await page
+    .getByRole("group", { name: "Дни" })
+    .getByRole("button", { name: "По числу дней" })
+    .click();
+  const days = page.getByLabel(/Уложиться в/);
+  await days.fill("2");
+  await days.press("Enter");
+  await expect(page.getByText(/АЗС на участке 1/)).toBeVisible();
+  await expect(page.getByText(/Ночлег у финиша: Гостевой дом «Привал»/)).toBeVisible();
+  await expect(page.getByText(/заправки на АЗС из OpenStreetMap/)).toBeVisible();
+});
+
 /** Ссылка обновляется асинхронно: ждём, пока адрес изменится. */
 async function nextUrl(page: Page, previous: string): Promise<string> {
   await expect.poll(() => page.url()).not.toBe(previous);

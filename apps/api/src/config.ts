@@ -13,6 +13,8 @@ export interface ApiConfig {
   webDir?: string;
   /** Каталог с файлами PMTiles; отдаётся по адресу /tiles/ (ADR-0015). */
   tilesDir?: string;
+  /** Файл АЗС и жилья (GeoJSONSeq из prepare-data.sh); без него слой POI выключен (ADR-0017). */
+  poiFile?: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -29,5 +31,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   };
   if (env.WEB_DIR) config.webDir = env.WEB_DIR;
   if (env.TILES_DIR) config.tilesDir = env.TILES_DIR;
+  if (env.POI_FILE) config.poiFile = env.POI_FILE;
   return config;
 }

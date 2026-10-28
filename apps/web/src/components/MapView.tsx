@@ -2,7 +2,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import type { GeoJSONSource, Map as MapLibreMap, Marker } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import { bounds } from "../lib/plan";
-import type { LonLat } from "../lib/api";
+import type { LonLat, RoutePoi } from "../lib/api";
 import {
   DEFAULT_VIEW,
   MAP_STYLE_URL,
@@ -23,6 +23,8 @@ interface Props {
   points: MapPoint[];
   line: LonLat[];
   nights: { position: LonLat; label: string }[];
+  /** АЗС и жильё вдоль маршрута (v0.3): кружки, видны с приближения 8. */
+  pois?: RoutePoi[];
   status?: string;
   onMapClick(lat: number, lon: number): void;
   onMarkerDrag(id: string, lat: number, lon: number): void;
@@ -35,7 +37,15 @@ const EMPTY_LINE = {
 };
 
 /** Карта MapLibre на своих тайлах OSM, атрибуция обязательна (R-02). */
-export function MapView({ points, line, nights, status, onMapClick, onMarkerDrag }: Props) {
+export function MapView({
+  points,
+  line,
+  nights,
+  pois = [],
+  status,
+  onMapClick,
+  onMarkerDrag,
+}: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markers = useRef<Marker[]>([]);
@@ -78,6 +88,19 @@ export function MapView({ points, line, nights, status, onMapClick, onMarkerDrag
         layout: { "line-join": "round", "line-cap": "round" },
         paint: { "line-color": ROUTE_COLOR, "line-width": 4.5 },
       });
+      map.addSource("pois", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addLayer({
+        id: "pois",
+        type: "circle",
+        source: "pois",
+        minzoom: 8,
+        paint: {
+          "circle-radius": 5,
+          "circle-color": ["case", ["==", ["get", "kind"], "fuel"], "#3C6B4B", "#E0892F"],
+          "circle-stroke-color": "#FFFBF2",
+          "circle-stroke-width": 1.5,
+        },
+      });
       setReady(true);
     });
     map.on("click", (e) => handlers.current.onMapClick(e.lngLat.lat, e.lngLat.lng));
@@ -98,6 +121,19 @@ export function MapView({ points, line, nights, status, onMapClick, onMarkerDrag
     const box = bounds(line);
     if (box) map.fitBounds(box, { padding: 60, maxZoom: 12, duration: 600 });
   }, [line, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    (map.getSource("pois") as GeoJSONSource | undefined)?.setData({
+      type: "FeatureCollection",
+      features: pois.map((p) => ({
+        type: "Feature",
+        properties: { kind: p.kind, name: p.name },
+        geometry: { type: "Point", coordinates: [p.lon, p.lat] },
+      })),
+    });
+  }, [pois, ready]);
 
   // Пока маршрута нет, показываем последнюю поставленную точку.
   const pointCount = points.length;

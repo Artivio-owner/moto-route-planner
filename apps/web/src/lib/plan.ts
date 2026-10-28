@@ -16,7 +16,7 @@ import {
   stopSettings,
 } from "../config";
 import { completePoints, type PlannerState } from "../state/planner";
-import type { LonLat, RouteResponse } from "./api";
+import type { LonLat, PoiKind, RoutePoi, RouteResponse } from "./api";
 
 export interface PlanResult {
   plan: TripPlan;
@@ -87,6 +87,10 @@ export function computePlan(state: PlannerState, route: RouteResponse): PlanResu
       return { lat, lon };
     },
     restAfterDays: state.restAfterDays ?? [],
+    // Слой АЗС есть на сервере: заправки на реальных АЗС (v0.3, P-07).
+    ...(route.pois
+      ? { fuelStationsKm: route.pois.filter((p) => p.kind === "fuel").map((p) => p.km) }
+      : {}),
   });
   const b = state.budget;
   const budgetPrices = {
@@ -235,4 +239,47 @@ export function bounds(points: readonly LonLat[]): [LonLat, LonLat] | null {
     [minX, minY],
     [maxX, maxY],
   ];
+}
+
+export const LODGING_KIND_LABELS: Record<Exclude<PoiKind, "fuel">, string> = {
+  hotel: "гостиница",
+  motel: "мотель",
+  guest_house: "гостевой дом",
+  hostel: "хостел",
+  camp_site: "кемпинг",
+  chalet: "домик",
+};
+
+/** Ночлег у финиша дня: жильё в пределах withinKm по маршруту, ближайшее первым (P-07). */
+export function lodgingNear(
+  pois: readonly RoutePoi[] | undefined,
+  atKm: number,
+  limit = 3,
+  withinKm = 15,
+): RoutePoi[] {
+  return (pois ?? [])
+    .filter((p) => p.kind !== "fuel" && Math.abs(p.km - atKm) <= withinKm)
+    .sort((a, b) => Math.abs(a.km - atKm) + a.offKm - (Math.abs(b.km - atKm) + b.offKm))
+    .slice(0, limit);
+}
+
+/** Число АЗС на участке (fromKm, toKm]; null без слоя POI. */
+export function fuelStationsBetween(
+  pois: readonly RoutePoi[] | undefined,
+  fromKm: number,
+  toKm: number,
+): number | null {
+  if (!pois) return null;
+  return pois.filter((p) => p.kind === "fuel" && p.km > fromKm && p.km <= toKm).length;
+}
+
+/** «Гостиница «Дорога», 1,2 км от дороги» для списка ночлега. */
+export function describeLodging(poi: RoutePoi): string {
+  const kind = poi.kind === "fuel" ? "АЗС" : LODGING_KIND_LABELS[poi.kind];
+  const name = poi.name ? `${poi.name} (${kind})` : kind[0]?.toUpperCase() + kind.slice(1);
+  const off =
+    poi.offKm < 0.3
+      ? "у дороги"
+      : `${poi.offKm.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} км от дороги`;
+  return `${name}, ${off}`;
 }
