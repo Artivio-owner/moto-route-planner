@@ -72,6 +72,7 @@ export function fetchRoute(
     avoidUnpaved: boolean;
     avoidToll: boolean;
     avoidMotorways: boolean;
+    curvy: boolean;
   },
   signal?: AbortSignal,
 ): Promise<RouteResponse> {

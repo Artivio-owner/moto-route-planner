@@ -20,6 +20,8 @@ export interface RouteRequest {
   avoidToll?: boolean;
   /** Избегать автомагистралей (M-02). */
   avoidMotorways?: boolean;
+  /** Извилистые дороги (M-01): профиль moto_curvy, грунт в нём избегается всегда. */
+  curvy?: boolean;
 }
 
 export interface RouteLeg {
@@ -117,6 +119,7 @@ export function buildServer(deps: Dependencies): FastifyInstance {
             avoidUnpaved: { type: "boolean" },
             avoidToll: { type: "boolean" },
             avoidMotorways: { type: "boolean" },
+            curvy: { type: "boolean" },
           },
         },
       },
@@ -128,8 +131,9 @@ export function buildServer(deps: Dependencies): FastifyInstance {
         avoidUnpaved = true,
         avoidToll = false,
         avoidMotorways = false,
+        curvy = false,
       } = request.body;
-      const profile = avoidUnpaved ? "moto" : "moto_unpaved";
+      const profile = curvy ? "moto_curvy" : avoidUnpaved ? "moto" : "moto_unpaved";
       const avoid = { toll: avoidToll, motorway: avoidMotorways };
       const variant = `${profile}${avoidToll ? "+toll" : ""}${avoidMotorways ? "+motorway" : ""}`;
       const stops = roundTrip ? [...points, points[0] as LatLon] : points;

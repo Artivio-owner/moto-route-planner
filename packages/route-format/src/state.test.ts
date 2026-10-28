@@ -56,8 +56,9 @@ describe("состояние в ссылке", () => {
   });
 
   it("избегание платных и магистралей в ссылке (M-02)", async () => {
-    const state = { ...sampleState(true), avoidToll: true, avoidMotorways: true };
+    const state = { ...sampleState(true), avoidToll: true, avoidMotorways: true, curvy: true };
     const decoded = await decodeState(await encodeState(state));
+    expect(decoded.curvy).toBe(true);
     expect(decoded.avoidToll).toBe(true);
     expect(decoded.avoidMotorways).toBe(true);
     const plain = await decodeState(await encodeState(sampleState(true)));

@@ -23,6 +23,7 @@ export interface PlannerState {
   avoidUnpaved: boolean;
   avoidToll?: boolean;
   avoidMotorways?: boolean;
+  curvy?: boolean;
   startDate: string;
   people: 1 | 2;
   motorcycles: 1 | 2;
@@ -119,6 +120,7 @@ export function toRouteState(state: PlannerState): RouteState {
   if (state.restAfterDays?.length) route.restAfterDays = state.restAfterDays;
   if (state.avoidToll) route.avoidToll = true;
   if (state.avoidMotorways) route.avoidMotorways = true;
+  if (state.curvy) route.curvy = true;
   return route;
 }
 
