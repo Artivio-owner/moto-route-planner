@@ -275,7 +275,7 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
     [
       `${formatDate(state.startDate)} — ${lastDay ? formatDate(lastDay.date) : ""}, ${pluralDays(plan.days.length)}${plan.restDays ? `, из них дневок: ${plan.restDays}` : ""}`,
       `Людей: ${plan.group.people}, мотоциклов: ${plan.group.motorcycles}. Мотоцикл: ${presetName}, бак ${state.profile.tankL} л, расход ${String(state.profile.consumptionLPer100Km).replace(".", ",")} л/100 км`,
-      `Валюта: ${cur === "RUB" ? "рубли" : `доллары (курс ${String(rubPerUsd).replace(".", ",")} ₽ за $${result.rateEdited ? ", ваш" : ", ориентировочно"})`}. ${state.avoidUnpaved ? "Без грунтовых дорог" : "Грунтовые дороги разрешены"}${state.avoidToll ? ", избегать платных" : ""}${state.avoidMotorways ? ", избегать автомагистралей" : ""}${state.roundTrip ? ", с возвратом" : ""}.`,
+      `Валюта: ${cur === "RUB" ? "рубли" : `доллары (курс ${String(rubPerUsd).replace(".", ",")} ₽ за $${result.rateEdited ? ", ваш" : ", ориентировочно"})`}. ${state.avoidUnpaved ? "Без грунтовых дорог" : "Грунтовые дороги разрешены"}${state.avoidToll ? ", избегать платных" : ""}${state.avoidMotorways ? ", избегать автомагистралей" : ""}${state.curvy ? ", извилистые дороги" : ""}${state.roundTrip ? ", с возвратом" : ""}.`,
       ...(plan.countries.length > 1
         ? [
             `Страны: ${plan.countries.map(countryName).join(" → ")}. Топливо: ${result.countryFuelPrices.map((c) => `${countryName(c.country)} ${m(c.priceRub)}/л`).join(", ")} (ориентировочно).`,

@@ -84,6 +84,16 @@ describe("POST /api/route", () => {
     expect(calls).toEqual(["moto:1->2", "moto+toll+motorway:1->2"]);
   });
 
+  it("извилистые дороги: профиль moto_curvy (M-01)", async () => {
+    const { app, calls } = setup();
+    await app.inject({
+      method: "POST",
+      url: "/api/route",
+      payload: { points: points.slice(0, 2), curvy: true, avoidUnpaved: false },
+    });
+    expect(calls).toEqual(["moto_curvy:1->2"]);
+  });
+
   it("повторный расчёт берёт отрезки из кэша (R-09)", async () => {
     const { app, calls } = setup();
     await app.inject({ method: "POST", url: "/api/route", payload: { points } });

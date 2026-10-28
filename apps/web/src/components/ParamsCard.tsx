@@ -202,6 +202,20 @@ export function ParamsCard({ state, dispatch }: Props) {
         />
         Избегать автомагистралей
       </label>
+      <label className="field row" style={{ flexDirection: "row" }}>
+        <input
+          type="checkbox"
+          checked={state.curvy === true}
+          onChange={(e) => set({ curvy: e.target.checked })}
+        />
+        Извилистые дороги
+      </label>
+      {state.curvy && (
+        <p className="hint">
+          Маршрут выбирает дороги с поворотами и избегает магистралей: путь длиннее, но интереснее.
+          Грунт в этом режиме избегается всегда. Расчёт идёт дольше.
+        </p>
+      )}
       {(state.avoidToll || state.avoidMotorways) && (
         <p className="hint">
           Если объезда нет, маршрут всё равно пройдёт по такой дороге: в путевом листе она будет

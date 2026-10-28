@@ -197,6 +197,21 @@ test("избегание платных и магистралей уходит �
   await expect(fresh.getByLabel("Избегать автомагистралей")).toBeChecked();
 });
 
+test("извилистые дороги уходят в запрос (M-01)", async ({ page }) => {
+  await mockApi(page);
+  const bodies: Record<string, unknown>[] = [];
+  page.on("request", (r) => {
+    if (r.url().endsWith("/api/route")) bodies.push(r.postDataJSON() as Record<string, unknown>);
+  });
+  await page.goto("/plan");
+  await pick(page, "Откуда, точка 1", "Старт");
+  await pick(page, "Куда, точка 2", "Финиш");
+  await expect(page.getByText(/День 1 ·/)).toBeVisible();
+  await page.getByLabel("Извилистые дороги").check();
+  await expect.poll(() => bodies.at(-1)?.["curvy"]).toBe(true);
+  await expect(page.getByText(/Грунт в этом режиме избегается всегда/)).toBeVisible();
+});
+
 test("граница: предупреждение и цены топлива по странам (R-10)", async ({ page }) => {
   await mockApi(page);
   const abroad = JSON.parse(route) as { zones: { fromKm: number; timeZone: string }[] };

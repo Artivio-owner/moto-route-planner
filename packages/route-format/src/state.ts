@@ -53,6 +53,8 @@ export interface RouteState {
   /** Избегать платных дорог и автомагистралей (M-02); в ссылке флаги 4 и 8. */
   avoidToll?: boolean;
   avoidMotorways?: boolean;
+  /** Извилистые дороги (M-01); в ссылке флаг 16. */
+  curvy?: boolean;
   /** Дата старта ГГГГ-ММ-ДД. */
   startDate: string;
   people: 1 | 2;
@@ -194,7 +196,8 @@ function pack(state: RouteState): Packed {
     (state.roundTrip ? 1 : 0) |
       (state.avoidUnpaved ? 2 : 0) |
       (state.avoidToll ? 4 : 0) |
-      (state.avoidMotorways ? 8 : 0),
+      (state.avoidMotorways ? 8 : 0) |
+      (state.curvy ? 16 : 0),
     state.startDate,
     state.people,
     state.motorcycles,
@@ -299,6 +302,7 @@ function unpack(raw: unknown): RouteState {
   };
   if ((flags & 4) === 4) state.avoidToll = true;
   if ((flags & 8) === 8) state.avoidMotorways = true;
+  if ((flags & 16) === 16) state.curvy = true;
   if (isFiniteNumber(price)) state.fuelPriceRub = price;
   if (isFiniteNumber(rate)) state.rubPerUsd = rate;
   if (budget !== undefined && budget !== null) state.budget = unpackBudget(budget);

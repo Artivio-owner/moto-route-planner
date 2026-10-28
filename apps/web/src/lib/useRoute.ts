@@ -20,6 +20,7 @@ export function useRoute(state: PlannerState): RouteStatus {
     state.avoidUnpaved,
     state.avoidToll === true,
     state.avoidMotorways === true,
+    state.curvy === true,
   ]);
   const request = useMemo(
     () => ({
@@ -28,6 +29,7 @@ export function useRoute(state: PlannerState): RouteStatus {
       avoidUnpaved: state.avoidUnpaved,
       avoidToll: state.avoidToll === true,
       avoidMotorways: state.avoidMotorways === true,
+      curvy: state.curvy === true,
       key,
     }),
     [key],
