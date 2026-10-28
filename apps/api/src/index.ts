@@ -1,11 +1,14 @@
 import { loadConfig } from "./config.js";
 import { createGraphHopperClient } from "./graphhopper.js";
 import { createPhotonClient } from "./photon.js";
+import { loadPoiIndex } from "./pois.js";
 import { buildServer } from "./server.js";
 import { createWeatherClient } from "./weather.js";
 
 const config = loadConfig();
+const pois = loadPoiIndex(config.poiFile);
 const app = buildServer({
+  ...(pois ? { pois } : {}),
   config,
   graphhopper: createGraphHopperClient(config.graphhopperUrl, config.upstreamTimeoutMs),
   geocoder: createPhotonClient(config.photonUrl, 10000),

@@ -11,7 +11,7 @@ set -euo pipefail
 DATA_DIR="${1:-$(dirname "$0")/../data}"
 REGIONS="${REGIONS:-ru}"
 PMTILES_VERSION="1.28.0"
-mkdir -p "$DATA_DIR/osm" "$DATA_DIR/photon" "$DATA_DIR/tiles"
+mkdir -p "$DATA_DIR/osm" "$DATA_DIR/photon" "$DATA_DIR/tiles" "$DATA_DIR/pois"
 
 # Код страны → путь Geofabrik и рамка для тайлов (запад, юг, восток, север).
 geofabrik_path() {
@@ -34,7 +34,7 @@ bbox() {
   esac
 }
 
-echo "1/3. Выгрузки OSM (Geofabrik): $REGIONS"
+echo "1/4. Выгрузки OSM (Geofabrik): $REGIONS"
 files=()
 for region in $REGIONS; do
   path="$(geofabrik_path "$region")"
@@ -51,7 +51,7 @@ else
   rm -f "${files[@]}"
 fi
 
-echo "2/3. Индекс Photon (готовые выгрузки GraphHopper по странам)"
+echo "2/4. Индекс Photon (готовые выгрузки GraphHopper по странам)"
 first_region="${REGIONS%% *}"
 country="${first_region%%/*}"
 curl -fL "https://download1.graphhopper.com/public/extracts/by-country-code/${country}/photon-db-${country}-latest.tar.bz2" \
@@ -62,7 +62,7 @@ if [ "$(echo "$REGIONS" | wc -w)" -gt 1 ]; then
   echo "Внимание: поиск адресов пока только для «${country}». Остальные страны: см. docs/deploy.md, раздел «Страны v0.2»."
 fi
 
-echo "3/3. Тайлы: вырезаем регионы из ежедневной сборки Protomaps"
+echo "3/4. Тайлы: вырезаем регионы из ежедневной сборки Protomaps"
 if ! command -v pmtiles >/dev/null; then
   curl -fL "https://github.com/protomaps/go-pmtiles/releases/download/v${PMTILES_VERSION}/go-pmtiles_${PMTILES_VERSION}_Linux_x86_64.tar.gz" \
     | tar -xz -C /tmp pmtiles
@@ -85,6 +85,10 @@ if [ -n "${BBOX:-}" ]; then IFS=, read -r W S E N <<<"$BBOX"; fi
 BUILD_DATE="$(date -u -d 'yesterday' +%Y%m%d)"
 "$PMTILES" extract "https://build.protomaps.com/${BUILD_DATE}.pmtiles" "$DATA_DIR/tiles/region.pmtiles" \
   --bbox="$W,$S,$E,$N" --maxzoom=14
+
+echo "4/4. АЗС и жильё для слоя POI (ADR-0017)"
+command -v osmium >/dev/null || { echo "Нужен osmium-tool: apt install osmium-tool"; exit 1; }
+"$(dirname "$0")/extract-pois.sh" "$DATA_DIR/osm/region.osm.pbf" "$DATA_DIR/pois/pois.geojsonseq"
 
 echo "Готово. Размеры:"
 du -sh "$DATA_DIR"/*

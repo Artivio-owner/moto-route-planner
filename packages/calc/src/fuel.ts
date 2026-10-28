@@ -41,11 +41,50 @@ export function fuelCost(liters: number, pricePerLiter: number): number {
 /**
  * Отметки заправок, км от старта. Выезжаем с полным баком и заправляемся,
  * когда до конца запаса хода остаётся не больше одного отрезка: заправки
- * ставятся через каждые rangeKm. Реальные АЗС вдоль маршрута появятся в v0.3 (P-07).
+ * ставятся через каждые rangeKm. С реальными АЗС: fuelStopsAtStations (v0.3, P-07).
  */
 export function fuelStopsKm(distanceKm: number, range: number): number[] {
   assertPositive("Запас хода", range);
   const stops: number[] = [];
   for (let km = range; km < distanceKm; km += range) stops.push(km);
   return stops;
+}
+
+/** Участок, где до следующей АЗС дальше запаса хода. */
+export interface FuelGap {
+  /** Последняя заправка (или старт) перед участком, км. */
+  fromKm: number;
+  /** Следующая АЗС или финиш, км. */
+  toKm: number;
+}
+
+/**
+ * Заправки на реальных АЗС (v0.3, P-07): от каждой заправки едем до самой дальней АЗС
+ * в пределах запаса хода. Если АЗС в пределах запаса нет, ставим условную заправку на
+ * границе запаса и отмечаем участок без АЗС: там нужна канистра или заправка заранее.
+ */
+export function fuelStopsAtStations(
+  distanceKm: number,
+  range: number,
+  stationsKm: readonly number[],
+): { stops: number[]; gaps: FuelGap[] } {
+  assertPositive("Запас хода", range);
+  const stations = [...stationsKm].filter((k) => k > 0 && k < distanceKm).sort((a, b) => a - b);
+  const stops: number[] = [];
+  const gaps: FuelGap[] = [];
+  let position = 0;
+  while (distanceKm - position > range) {
+    const reachable = stations.filter((k) => k > position + 1e-6 && k <= position + range);
+    const farthest = reachable[reachable.length - 1];
+    if (farthest !== undefined) {
+      stops.push(farthest);
+      position = farthest;
+      continue;
+    }
+    const next = stations.find((k) => k > position + range);
+    gaps.push({ fromKm: position, toKm: next ?? distanceKm });
+    position += range;
+    stops.push(position);
+  }
+  return { stops, gaps };
 }

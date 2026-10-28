@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fuelCost, fuelLiters, fuelStopsKm, rangeKm } from "./fuel.js";
+import { fuelCost, fuelLiters, fuelStopsAtStations, fuelStopsKm, rangeKm } from "./fuel.js";
 
 describe("rangeKm", () => {
   // Значения пресетов из docs/14-trip-parameters-spec.md, раздел 2.
@@ -43,5 +43,26 @@ describe("fuelStopsKm", () => {
 
   it("на маршруте короче запаса хода заправок нет", () => {
     expect(fuelStopsKm(200, 280)).toEqual([]);
+  });
+});
+
+describe("заправки на реальных АЗС (P-07)", () => {
+  it("самая дальняя АЗС в пределах запаса хода", () => {
+    // Запас 200 км, АЗС на 150, 190, 260, 380 км, маршрут 500 км.
+    expect(fuelStopsAtStations(500, 200, [150, 190, 260, 380])).toEqual({
+      stops: [190, 380],
+      gaps: [],
+    });
+  });
+
+  it("участок без АЗС дальше запаса: условная заправка и пометка", () => {
+    expect(fuelStopsAtStations(600, 200, [100, 450])).toEqual({
+      stops: [100, 300, 450],
+      gaps: [{ fromKm: 100, toKm: 450 }],
+    });
+  });
+
+  it("короткий маршрут без заправок; станции вне маршрута игнорируются", () => {
+    expect(fuelStopsAtStations(150, 200, [-5, 50, 900])).toEqual({ stops: [], gaps: [] });
   });
 });

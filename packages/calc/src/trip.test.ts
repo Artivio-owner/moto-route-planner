@@ -200,4 +200,17 @@ describe("planTrip", () => {
     expect(plan.days).toHaveLength(3);
     expect(plan.restDays).toBe(0);
   });
+
+  it("АЗС из OSM: заправки на станциях, участок без АЗС даёт предупреждение (P-07)", () => {
+    // Запас хода 210 км; станции на 200 и 380 км, дальше до 1000 км пусто.
+    const plan = planTrip({ ...base, fuelStationsKm: [200, 380] });
+    expect(plan.fuelStopsAtStations).toBe(true);
+    expect(plan.days.flatMap((d) => d.fuelStopsKm).slice(0, 2)).toEqual([200, 380]);
+    expect(plan.fuelGaps[0]).toEqual({ fromKm: 380, toKm: 1000 });
+    const warned = plan.days.find((d) => d.warnings.some((w) => w.kind === "noFuel"));
+    expect(warned?.warnings.find((w) => w.kind === "noFuel")?.message).toMatch(
+      /^Нет АЗС на участке 380–1000 км/,
+    );
+    expect(planTrip(base).fuelStopsAtStations).toBe(false);
+  });
 });

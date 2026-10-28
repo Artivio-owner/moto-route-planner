@@ -309,6 +309,7 @@ export function PlannerPage() {
         line,
         dayLabels,
         url: window.location.href,
+        pois: route.pois,
       });
       const first = points[0]?.name ?? "старт";
       const last = points[points.length - 1]?.name ?? "финиш";
@@ -361,6 +362,7 @@ export function PlannerPage() {
           points={mapPoints}
           line={line.points}
           nights={nights}
+          pois={route?.pois ?? []}
           status={status}
           onMapClick={(lat, lon) => void addFromMap(lat, lon)}
           onMarkerDrag={(id, lat, lon) => void dragPoint(id, lat, lon)}
@@ -382,6 +384,7 @@ export function PlannerPage() {
           onToggleRest={(afterDay) => dispatch({ type: "toggleRest", afterDay })}
           offlineSavedAt={offlineSavedAt}
           elevation={elevation}
+          pois={route?.pois}
         />
       </div>
       {toast && (

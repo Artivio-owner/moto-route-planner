@@ -6,6 +6,7 @@
 3. F → G: паром (road_environment = ferry).
 4. H → K: прямая магистраль или извилистая региональная дорога (режим «извилистые»).
 5. D → E: бесплатный объезд платной магистрали по региональной дороге (M-02).
+6. АЗС и гостиница у дороги B → D (слой POI, P-07), отдельные точки вне дорог.
 Запуск: python3 make_synthetic.py > synthetic.osm
 """
 import math
@@ -90,12 +91,24 @@ end = line(K, (55.0, 38.8))
 end[0] = straight[-1]
 way(end, highway="secondary", surface="asphalt")
 
+# 6. Точки POI: не часть дорог, выводятся отдельно с тегами.
+pois = [
+    ((55.001, 37.3), {"amenity": "fuel", "name": "АЗС у Объезда", "brand": "Тест"}),
+    ((55.012, 37.35), {"tourism": "hotel", "name": "Гостиница «Синтетика»"}),
+    ((55.2, 37.35), {"tourism": "camp_site", "name": "Далёкий кемпинг"}),
+]
+
 used = {n for _, ids, _ in ways for n in ids}
 print('<?xml version="1.0" encoding="UTF-8"?>')
 print('<osm version="0.6" generator="versta-synthetic">')
 for nid, lat, lon in nodes:
     if nid in used:
         print(f'  <node id="{nid}" lat="{lat:.7f}" lon="{lon:.7f}" version="1"/>')
+for i, ((lat, lon), tags) in enumerate(pois):
+    print(f'  <node id="{900000 + i}" lat="{lat:.7f}" lon="{lon:.7f}" version="1">')
+    for k, v in tags.items():
+        print(f'    <tag k="{k}" v="{v}"/>')
+    print("  </node>")
 for wid, ids, tags in ways:
     print(f'  <way id="{wid}" version="1">')
     for n in ids:

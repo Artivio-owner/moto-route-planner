@@ -3,7 +3,7 @@
 
 import { countryMarks, countryName, fuelCostByMarks, type PriceMark } from "./countries.js";
 import { dayBoundariesKm, type Leg, type SplitMode } from "./days.js";
-import { fuelLiters, fuelStopsKm, rangeKm } from "./fuel.js";
+import { fuelLiters, fuelStopsAtStations, fuelStopsKm, rangeKm, type FuelGap } from "./fuel.js";
 import { normalizeGroup, type Group } from "./group.js";
 import {
   drivingTimeH,
@@ -73,10 +73,15 @@ export interface TripInput {
    * Первая отметка действует с начала маршрута.
    */
   fuelPriceMarks?: readonly PriceMark[];
+  /**
+   * АЗС вдоль маршрута, км (v0.3, P-07). Если задано, заправки ставятся на реальные АЗС,
+   * а участки без АЗС дальше запаса хода дают предупреждение. Без слоя POI: undefined.
+   */
+  fuelStationsKm?: readonly number[];
 }
 
 export type DayWarningKind =
-  "overDailyKm" | "overDailyHours" | "heavyDay" | "afterSunset" | "border";
+  "overDailyKm" | "overDailyHours" | "heavyDay" | "afterSunset" | "border" | "noFuel";
 
 export interface DayWarning {
   kind: DayWarningKind;
@@ -139,6 +144,10 @@ export interface TripPlan {
   days: DayPlan[];
   hasToll: boolean;
   hasFerry: boolean;
+  /** Заправки поставлены на реальные АЗС из OSM (иначе через каждый запас хода). */
+  fuelStopsAtStations: boolean;
+  /** Участки, где до следующей АЗС дальше запаса хода. */
+  fuelGaps: FuelGap[];
   /** Страны по порядку, коды ISO; неопределённые участки пропущены. */
   countries: string[];
 }
@@ -339,7 +348,11 @@ export function planTrip(input: TripInput): TripPlan {
   const segments: Segment[] = input.legs.flatMap((leg) => leg.segments);
   const range = rangeKm(input.profile.tankL, input.profile.consumptionLPer100Km);
   const totalKm = segments.reduce((sum, seg) => sum + seg.distanceKm, 0);
-  const allFuelStops = fuelStopsKm(totalKm, range);
+  const atStations = input.fuelStationsKm
+    ? fuelStopsAtStations(totalKm, range, input.fuelStationsKm)
+    : null;
+  const allFuelStops = atStations ? atStations.stops : fuelStopsKm(totalKm, range);
+  const fuelGaps = atStations?.gaps ?? [];
   const profile = timeProfile(segments, input.profile.speeds);
   const { split } = input;
   const boundaries =
@@ -410,6 +423,12 @@ export function planTrip(input: TripInput): TripPlan {
     };
     const sun = sunForDay(input, date, startKm, endKm);
     const warnings = dayWarnings(day, input.profile);
+    for (const gap of fuelGaps.filter((g) => g.fromKm >= startKm && g.fromKm < endKm)) {
+      warnings.push({
+        kind: "noFuel",
+        message: `Нет АЗС на участке ${Math.round(gap.fromKm)}–${Math.round(gap.toKm)} км: это больше запаса хода (${Math.round(range)} км). Возьмите канистру или заправьтесь заранее`,
+      });
+    }
     for (const border of day.borders) {
       warnings.push({
         kind: "border",
@@ -446,6 +465,8 @@ export function planTrip(input: TripInput): TripPlan {
     days,
     hasToll: days.some((d) => d.hasToll),
     hasFerry: days.some((d) => d.hasFerry),
+    fuelStopsAtStations: atStations !== null,
+    fuelGaps,
     countries: [...new Set(marks.map((m) => m.country).filter((c): c is string => c !== null))],
   };
 }
