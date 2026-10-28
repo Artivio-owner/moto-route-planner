@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { simplifyProfileIndices } from "../src/geometry.js";
 import {
   avoidModel,
   createGraphHopperClient,
@@ -100,5 +101,36 @@ describe("классы и ошибки", () => {
     });
     expect(avoidModel({})).toBeNull();
     expect(avoidModel({ motorway: true })?.priority).toHaveLength(1);
+  });
+
+  it("высоты (E-01): перевал на прямой дороге не теряется при упрощении", () => {
+    // Прямая на восток 11 точек, в середине холм 400 м.
+    const coordinates = Array.from({ length: 11 }, (_, i) => [
+      37 + i * 0.01,
+      55,
+      i === 5 ? 400 : 150,
+    ]);
+    const leg = pathToLeg({
+      distance: 6400,
+      time: 300000,
+      points: { coordinates },
+      details: { road_class: [[0, 10, "primary"]] },
+    });
+    expect(leg.elevation).toBeDefined();
+    expect(leg.elevation?.length).toBe(leg.geometry.length);
+    expect(Math.max(...(leg.elevation ?? []))).toBe(400);
+    const flat = pathToLeg({
+      distance: 6400,
+      time: 300000,
+      points: { coordinates: coordinates.map(([x, y]) => [x as number, y as number]) },
+      details: {},
+    });
+    expect(flat.elevation).toBeUndefined();
+    expect(flat.geometry).toHaveLength(2);
+  });
+
+  it("упрощение профиля оставляет точки с отклонением больше допуска", () => {
+    expect(simplifyProfileIndices([0, 1, 2, 3], [100, 200, 300, 100], 10)).toEqual([0, 2, 3]);
+    expect(simplifyProfileIndices([0, 1], [0, 0], 10)).toEqual([0, 1]);
   });
 });

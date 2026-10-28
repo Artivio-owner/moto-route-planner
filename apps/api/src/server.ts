@@ -26,6 +26,8 @@ export interface RouteLeg {
   segments: Segment[];
   geometry: LonLat[];
   geometryKm: number[];
+  /** Высота точек geometry, м (E-01); нет, если сервер без данных высот. */
+  elevation?: number[];
 }
 
 export interface RouteResponse {
@@ -148,11 +150,12 @@ export function buildServer(deps: Dependencies): FastifyInstance {
         offsetKm += leg.distanceKm;
       }
       return {
-        legs: legs.map(({ distanceKm, segments, geometry, geometryKm }) => ({
+        legs: legs.map(({ distanceKm, segments, geometry, geometryKm, elevation }) => ({
           distanceKm,
           segments,
           geometry,
           geometryKm,
+          ...(elevation ? { elevation } : {}),
         })),
         zones,
         distanceKm: offsetKm,

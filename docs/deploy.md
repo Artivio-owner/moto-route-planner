@@ -28,6 +28,9 @@ docker compose logs -f graphhopper   # первая сборка графа: д�
 ```
 Откройте `https://ваш-домен/` и проверьте маршрут. Админка: `https://ваш-домен/admin/` (инструкция: `docs/admin.md`).
 
+## Высоты для профиля (E-01)
+При первой сборке графа GraphHopper скачивает файлы высот (CGIAR SRTM и GMTED2010, ADR-0016) в том `elevation-cache`. Нужен выход в интернет к их источникам; объём и время для России не измерены. Чтобы обойтись без высот, удалите строки `graph.elevation.*` из `infra/graphhopper/config.yml`: профиль высоты просто не будет показан.
+
 ## Страны v0.2 (Казахстан, Грузия, Турция)
 ```bash
 REGIONS="ru kz ge tr" ./scripts/prepare-data.sh   # нужен osmium-tool: apt install osmium-tool

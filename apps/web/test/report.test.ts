@@ -17,10 +17,18 @@ describe("PDF путевой лист", () => {
     s = reducer(s, { type: "addFromMap", name: "Казань", lat: 55.8, lon: 49.1 });
     s = reducer(s, { type: "addFromMap", name: "Нижний Новгород", lat: 56.3, lon: 44 });
     const result = computePlan(s, route);
+    // Профиль высоты (E-01): синусоида по точкам геометрии.
+    const hilly = {
+      ...route,
+      legs: route.legs.map((leg) => ({
+        ...leg,
+        elevation: leg.geometry.map((_, i) => 200 + 150 * Math.sin(i / 3)),
+      })),
+    };
     const bytes = await buildReport({
       state: s,
       result,
-      line: routeLine(route),
+      line: routeLine(hilly),
       dayLabels: result.plan.days.map((_, i) => ({ from: `Город ${i}`, to: `Город ${i + 1}` })),
       url: "https://versta.example/plan#r=test",
       weather: result.plan.days.map((d, i) =>

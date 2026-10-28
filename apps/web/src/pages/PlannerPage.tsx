@@ -19,7 +19,14 @@ import { LONG_LINK_CHARS, tripDefaults } from "../config";
 const GPX_MAX_BYTES = 20 * 1024 * 1024;
 import { coordsName, reversePlace, type LonLat } from "../lib/api";
 import { downloadBlob } from "../lib/download";
-import { computePlan, pointAtKm, routeLine, sliceLine } from "../lib/plan";
+import {
+  computePlan,
+  elevationStats,
+  pointAtKm,
+  routeLine,
+  sliceLine,
+  type RouteLine,
+} from "../lib/plan";
 import { useRoute } from "../lib/useRoute";
 import { useWeather } from "../lib/useWeather";
 import { clearHistory, readHistory, saveToHistory, type HistoryEntry } from "../state/history";
@@ -107,9 +114,22 @@ export function PlannerPage() {
     // Только при новом маршруте или ссылке.
   }, [encoded, result === null]);
 
-  const line = useMemo(
+  const line = useMemo<RouteLine>(
     () => (route ? routeLine(route) : { points: [] as LonLat[], km: [] as number[] }),
     [route],
+  );
+  // Набор высоты по дням и за поездку (E-01): только если сервер отдаёт высоты.
+  const elevation = useMemo(
+    () =>
+      result
+        ? {
+            days: result.plan.days.map((d) =>
+              d.rest ? null : elevationStats(line, d.startKm, d.endKm),
+            ),
+            total: elevationStats(line, 0, result.plan.distanceKm),
+          }
+        : { days: [], total: null },
+    [result, line],
   );
 
   const mapPoints = useMemo<MapPoint[]>(() => {
@@ -361,6 +381,7 @@ export function PlannerPage() {
           pdfBusy={pdfBusy}
           onToggleRest={(afterDay) => dispatch({ type: "toggleRest", afterDay })}
           offlineSavedAt={offlineSavedAt}
+          elevation={elevation}
         />
       </div>
       {toast && (

@@ -15,7 +15,14 @@ import {
   money,
   pluralDays,
 } from "../lib/format";
-import { bounds, pointAtKm, sliceLine, type PlanResult } from "../lib/plan";
+import {
+  bounds,
+  elevationStats,
+  pointAtKm,
+  sliceLine,
+  type PlanResult,
+  type RouteLine,
+} from "../lib/plan";
 import { CUSTOM_PRESET, completePoints, routeTitle, type PlannerState } from "../state/planner";
 import { presets } from "../config";
 import { donate as donateConfig, donateEnabled, donateQrForPdf, type PdfQr } from "../lib/donate";
@@ -24,7 +31,7 @@ import { mapSnapshot } from "./mapSnapshot";
 export interface ReportInput {
   state: PlannerState;
   result: PlanResult;
-  line: { points: LonLat[]; km: number[] };
+  line: RouteLine;
   dayLabels: { from: string; to: string }[];
   /** Погода по дням (C-13); null, если не получена. */
   weather?: (DayWeather | null)[];
@@ -57,6 +64,8 @@ const C = {
 };
 
 const A4 = { w: 595.28, h: 841.89 };
+/** Источник высот для подписи (ADR-0016). */
+const ELEVATION_SOURCE = "SRTM (CGIAR-CSI) и GMTED2010 (USGS) через GraphHopper";
 /** Снимков карты дня не больше этого числа: дальше схема, чтобы PDF не собирался минутами. */
 const MAX_DAY_SNAPSHOTS = 30;
 const M = 40;
@@ -454,7 +463,9 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
   drawHeader();
   plan.days.forEach((day, i) => {
     const label = dayLabels[i];
+    const ele = day.rest ? null : elevationStats(line, day.startKm, day.endKm);
     const notes = [
+      ele ? `набор высоты ${Math.round(ele.ascentM)} м` : "",
       day.hasToll ? "платный участок" : "",
       day.hasFerry ? "паром" : "",
       day.zoneShiftH ? `пояс ${day.zoneShiftH > 0 ? "+" : ""}${day.zoneShiftH} ч` : "",
@@ -632,6 +643,70 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
       size: 8,
       color: C.muted,
     });
+  }
+
+  // 6. Графики: профиль высоты (E-01, v0.3), если у сервера есть данные высот.
+  const total = elevationStats(line, 0, plan.distanceKm);
+  if (total && line.elevation) {
+    const chartH = 100;
+    w.ensure(chartH + 70);
+    w.heading("Профиль высоты");
+    const chartW = A4.w - 2 * M;
+    const top = w.y;
+    const span = Math.max(total.maxM - total.minM, 50);
+    const base = total.minM - span * 0.1;
+    const xAt = (km: number) => M + (km / Math.max(plan.distanceKm, 1e-9)) * chartW;
+    const yAt = (m: number) => top - chartH + ((m - base) / (span * 1.2)) * chartH;
+    w.page.drawRectangle({
+      x: M,
+      y: top - chartH,
+      width: chartW,
+      height: chartH,
+      color: C.surface,
+      borderColor: C.line,
+      borderWidth: 0.6,
+    });
+    // Границы дней пунктиром.
+    for (const day of plan.days.slice(0, -1)) {
+      if (day.rest) continue;
+      w.page.drawLine({
+        start: { x: xAt(day.endKm), y: top - chartH },
+        end: { x: xAt(day.endKm), y: top },
+        thickness: 0.5,
+        color: C.line,
+        dashArray: [2, 2],
+      });
+    }
+    const step = Math.max(1, Math.floor(line.elevation.length / 1500));
+    let prev: [number, number] | null = null;
+    for (let i = 0; i < line.elevation.length; i += step) {
+      const p: [number, number] = [xAt(line.km[i] ?? 0), yAt(line.elevation[i] ?? 0)];
+      if (prev)
+        w.page.drawLine({
+          start: { x: prev[0], y: prev[1] },
+          end: { x: p[0], y: p[1] },
+          thickness: 1.2,
+          color: C.primary,
+        });
+      prev = p;
+    }
+    for (const [value, label] of [
+      [total.maxM, `${Math.round(total.maxM)} м`],
+      [total.minM, `${Math.round(total.minM)} м`],
+    ] as const) {
+      w.page.drawText(label, {
+        x: M + 3,
+        y: yAt(value) + 2,
+        size: 7,
+        font: regular,
+        color: C.muted,
+      });
+    }
+    w.y -= chartH + 14;
+    w.text(
+      `Набор высоты ${Math.round(total.ascentM)} м, сброс ${Math.round(total.descentM)} м, от ${Math.round(total.minM)} до ${Math.round(total.maxM)} м над уровнем моря. Пунктир: границы дней. Данные высот: ${ELEVATION_SOURCE}.`,
+      { size: 8, color: C.muted },
+    );
   }
 
   // 6. Графики: структура бюджета (v0.2).

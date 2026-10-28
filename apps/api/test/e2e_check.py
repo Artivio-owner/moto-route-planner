@@ -25,6 +25,8 @@ checks = {
     "без платных (M-02): нет платных участков": not any(s.get("toll") for s in free_segments),
     "без магистралей (M-02): нет класса motorway": all(s["roadClass"] != "motorway" for s in free_segments),
     "объезд длиннее": free["distanceKm"] > route["distanceKm"],
+    "высоты (E-01): есть у каждой точки": all(len(l.get("elevation", [])) == len(l["geometry"]) for l in route["legs"]),
+    "высоты (E-01): перевал из тестового SRTM": max(e for l in route["legs"] for e in l.get("elevation", [0])) > 300,
 }
 for name, ok in checks.items():
     print(("ок      " if ok else "ОШИБКА  ") + name)

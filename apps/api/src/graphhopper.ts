@@ -2,7 +2,13 @@
 
 import type { RoadClass, Segment } from "@versta/calc";
 import { UserFacingError } from "./errors.js";
-import { cumulativeKm, haversineKm, simplifyIndices, type LonLat } from "./geometry.js";
+import {
+  cumulativeKm,
+  haversineKm,
+  simplifyIndices,
+  simplifyProfileIndices,
+  type LonLat,
+} from "./geometry.js";
 
 export interface LatLon {
   lat: number;
@@ -30,6 +36,8 @@ export interface LegResult {
   geometry: LonLat[];
   /** Километры от начала отрезка для каждой точки geometry. */
   geometryKm: number[];
+  /** Высота над уровнем моря, м, для каждой точки geometry; нет, если граф без высот (E-01). */
+  elevation?: number[];
   /** Полная геометрия: нужна только для часовых поясов, наружу не отдаётся. */
   fullGeometry: LonLat[];
   fullKm: number[];
@@ -72,6 +80,8 @@ function lookup<T>(
 
 /** Допуск упрощения линии для показа: 15 м. */
 const SIMPLIFY_TOLERANCE_KM = 0.015;
+/** Допуск упрощения профиля высоты: 10 м по высоте. */
+const ELEVATION_TOLERANCE_M = 10;
 
 export function pathToLeg(path: GhPath): LegResult {
   const points = path.points.coordinates.map((c) => [c[0], c[1]] as LonLat);
@@ -114,8 +124,17 @@ export function pathToLeg(path: GhPath): LegResult {
     segments.push(segment);
   }
 
-  const kept = simplifyIndices(points, SIMPLIFY_TOLERANCE_KM);
-  return {
+  // Высота есть, только если граф собран с данными высот: тогда у точек третья координата.
+  const coords = path.points.coordinates;
+  const hasElevation = coords.length > 0 && coords.every((c) => typeof c[2] === "number");
+  const elevation = hasElevation ? coords.map((c) => c[2] as number) : null;
+  let kept = simplifyIndices(points, SIMPLIFY_TOLERANCE_KM);
+  if (elevation) {
+    // На прямой дороге через холм 2D-упрощение убрало бы перевал: добавляем точки профиля.
+    const profile = simplifyProfileIndices(fullKm, elevation, ELEVATION_TOLERANCE_M);
+    kept = [...new Set([...kept, ...profile])].sort((a, b) => a - b);
+  }
+  const result: LegResult = {
     distanceKm: fullKm[fullKm.length - 1] ?? 0,
     segments,
     geometry: kept.map((i) => points[i] as LonLat),
@@ -123,6 +142,8 @@ export function pathToLeg(path: GhPath): LegResult {
     fullGeometry: points,
     fullKm,
   };
+  if (elevation) result.elevation = kept.map((i) => Math.round((elevation[i] ?? 0) * 10) / 10);
+  return result;
 }
 
 /** Понятное сообщение по ответу GraphHopper (R-07). */
@@ -185,6 +206,8 @@ export function createGraphHopperClient(
         ],
         profile,
         points_encoded: false,
+        // Без данных высот в графе GraphHopper просто отдаёт координаты без высоты.
+        elevation: true,
         instructions: false,
         details: ["road_class", "road_environment", "toll", "time"],
       };

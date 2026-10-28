@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computePlan, pointAtKm, routeLine, sliceLine } from "../src/lib/plan";
+import { computePlan, elevationStats, pointAtKm, routeLine, sliceLine } from "../src/lib/plan";
 import { initialState, reducer } from "../src/state/planner";
 import { route } from "./fixtures";
 
@@ -84,5 +84,22 @@ describe("расчёт плана из ответа API", () => {
     ).toBe(true);
     // Дешёвое топливо в Казахстане уменьшает итог по сравнению с маршрутом только по России.
     expect(result.plan.fuelCostRub).toBeLessThan(computePlan(s, route).plan.fuelCostRub);
+  });
+
+  it("высоты (E-01): набор и сброс по участку, без данных высот null", () => {
+    expect(elevationStats(routeLine(route), 0, 100)).toBeNull();
+    const withEle = {
+      ...route,
+      legs: route.legs.map((leg) => ({
+        ...leg,
+        elevation: leg.geometry.map((_, i) => (i % 2 === 0 ? 100 : 160)),
+      })),
+    };
+    const line = routeLine(withEle);
+    expect(line.elevation).toHaveLength(line.points.length);
+    const stats = elevationStats(line, 0, withEle.distanceKm);
+    expect(stats?.minM).toBe(100);
+    expect(stats?.maxM).toBe(160);
+    expect(stats?.ascentM).toBeGreaterThan(0);
   });
 });

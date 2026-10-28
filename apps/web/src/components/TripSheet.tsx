@@ -10,7 +10,7 @@ import {
 } from "../lib/format";
 import type { DayWeather } from "../lib/api";
 import { DonateBlock } from "./DonateBlock";
-import type { PlanResult } from "../lib/plan";
+import type { ElevationStats, PlanResult } from "../lib/plan";
 import { describeWeather, weatherSource, weatherWarnings } from "../lib/weather";
 
 export interface DayLabel {
@@ -34,6 +34,8 @@ interface Props {
   onToggleRest(afterDay: number): void;
   /** Нет сети: расчёт из сохранённой копии (X-07). */
   offlineSavedAt?: number | undefined;
+  /** Набор высоты по дням и за поездку (E-01); null без данных высот. */
+  elevation?: { days: (ElevationStats | null)[]; total: ElevationStats | null };
 }
 
 /** Путевой лист в интерфейсе: сводка, дни, предупреждения, действия. */
@@ -51,6 +53,7 @@ export function TripSheet({
   pdfBusy,
   onToggleRest,
   offlineSavedAt,
+  elevation,
 }: Props) {
   if (error) {
     return (
@@ -120,6 +123,8 @@ export function TripSheet({
       <p className="hint">
         Запас хода около {formatKm(plan.rangeKm)}. Ночей в пути: {plan.nights}
         {plan.restDays > 0 ? `, из них дневок: ${plan.restDays}` : ""}.
+        {elevation?.total &&
+          ` Набор высоты ${Math.round(elevation.total.ascentM)} м, высоты от ${Math.round(elevation.total.minM)} до ${Math.round(elevation.total.maxM)} м.`}
       </p>
       {result.countryFuelPrices.length > 1 && (
         <p className="hint">
@@ -202,6 +207,9 @@ export function TripSheet({
                 <span>{formatKm(day.distanceKm)}</span>
                 <span>в пути {formatHours(day.totalH)}</span>
                 <span>заправок {day.fuelStopsKm.length}</span>
+                {elevation?.days[i] && (
+                  <span>набор {Math.round(elevation.days[i]?.ascentM ?? 0)} м</span>
+                )}
                 <span>{money(day.fuelCostRub, currency, rate)}</span>
               </div>
               <div className="day-meta">
