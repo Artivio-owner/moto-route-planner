@@ -1,5 +1,13 @@
 export { CURRENCIES, CURRENCY_SIGNS, formatMoney, fromRub } from "./currency.js";
 export type { Currency } from "./currency.js";
+export {
+  COUNTRY_NAMES,
+  countryMarks,
+  countryName,
+  countryOfZone,
+  fuelCostByMarks,
+} from "./countries.js";
+export type { CountryMark, PriceMark } from "./countries.js";
 export { dayBoundariesKm } from "./days.js";
 export type { Leg, SplitMode } from "./days.js";
 export { RANGE_RESERVE, fuelCost, fuelLiters, fuelStopsKm, rangeKm } from "./fuel.js";
@@ -26,6 +34,7 @@ export { sunTimes } from "./sun.js";
 export type { SunTimes } from "./sun.js";
 export { DEFAULT_STOPS, planTrip, zoneAtKm } from "./trip.js";
 export type {
+  BorderCrossing,
   DayPlan,
   DayWarning,
   DayWarningKind,

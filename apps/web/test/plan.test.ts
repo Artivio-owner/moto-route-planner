@@ -62,4 +62,27 @@ describe("расчёт плана из ответа API", () => {
     expect(day[0]?.[0]).toBeGreaterThan(42);
     expect(day.at(-1)).toEqual([49.1, 55.8]);
   });
+
+  it("страны v0.2: граница и цена топлива страны по умолчанию, ваша цена в России", () => {
+    const s = reducer(state(), { type: "set", patch: { fuelPriceRub: 80 } });
+    const abroad = {
+      ...route,
+      zones: [
+        { fromKm: 0, timeZone: "Europe/Moscow" },
+        { fromKm: 500, timeZone: "Asia/Oral" },
+      ],
+    };
+    const result = computePlan(s, abroad);
+    expect(result.plan.countries).toEqual(["RU", "KZ"]);
+    expect(result.countryFuelPrices).toEqual([
+      { country: "RU", priceRub: 80 },
+      { country: "KZ", priceRub: 55 },
+    ]);
+    const borderDay = result.plan.days.find((d) => d.borders.length);
+    expect(
+      borderDay?.warnings.some((w) => w.message.startsWith("Граница: Россия → Казахстан")),
+    ).toBe(true);
+    // Дешёвое топливо в Казахстане уменьшает итог по сравнению с маршрутом только по России.
+    expect(result.plan.fuelCostRub).toBeLessThan(computePlan(s, route).plan.fuelCostRub);
+  });
 });

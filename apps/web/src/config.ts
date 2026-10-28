@@ -40,10 +40,15 @@ const fuelPrices = fuelPricesJson as {
 export const defaultFuel = fuelPrices.defaultFuel;
 export const fuelPricesUpdated = fuelPrices.updated;
 
-/** Цена по умолчанию, ₽/л. В v0.1 только Россия (ADR-0006). */
+/** Цена по умолчанию, ₽/л. Страны v0.2 задаются в data/fuel-prices.json (ADR-0006). */
 export function defaultFuelPrice(fuel: FuelType, country = "RU"): number {
   const byCountry = fuelPrices.countries[country] ?? {};
   return byCountry[fuel] ?? byCountry["95"] ?? 75;
+}
+
+/** Есть ли своя цена топлива для страны в data/. */
+export function hasCountryFuelPrice(country: string): boolean {
+  return fuelPrices.countries[country] !== undefined;
 }
 
 /** «08:00» → минуты от полуночи. */

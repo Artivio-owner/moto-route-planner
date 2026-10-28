@@ -1,8 +1,9 @@
 // Сводный расчёт поездки по дням: время, заправки, топливо, местное время.
 // Спецификации: docs/08-day-split-spec.md, docs/14-trip-parameters-spec.md.
 
+import { countryMarks, countryName, fuelCostByMarks, type PriceMark } from "./countries.js";
 import { dayBoundariesKm, type Leg, type SplitMode } from "./days.js";
-import { fuelCost, fuelLiters, fuelStopsKm, rangeKm } from "./fuel.js";
+import { fuelLiters, fuelStopsKm, rangeKm } from "./fuel.js";
 import { normalizeGroup, type Group } from "./group.js";
 import {
   drivingTimeH,
@@ -67,9 +68,15 @@ export interface TripInput {
    * в точке финиша. Номера за пределами ходовых дней, кроме последнего, игнорируются.
    */
   restAfterDays?: readonly number[];
+  /**
+   * Цена топлива по участкам (страны, v0.2). Без отметок везде fuelPriceRub.
+   * Первая отметка действует с начала маршрута.
+   */
+  fuelPriceMarks?: readonly PriceMark[];
 }
 
-export type DayWarningKind = "overDailyKm" | "overDailyHours" | "heavyDay" | "afterSunset";
+export type DayWarningKind =
+  "overDailyKm" | "overDailyHours" | "heavyDay" | "afterSunset" | "border";
 
 export interface DayWarning {
   kind: DayWarningKind;
@@ -106,7 +113,15 @@ export interface DayPlan {
   sunrise: Date | null;
   sunset: Date | null;
   polar: "day" | "night" | null;
+  /** Пересечения границ за день (R-10). */
+  borders: BorderCrossing[];
   warnings: DayWarning[];
+}
+
+export interface BorderCrossing {
+  km: number;
+  from: string;
+  to: string;
 }
 
 export interface TripPlan {
@@ -124,6 +139,8 @@ export interface TripPlan {
   days: DayPlan[];
   hasToll: boolean;
   hasFerry: boolean;
+  /** Страны по порядку, коды ISO; неопределённые участки пропущены. */
+  countries: string[];
 }
 
 export function zoneAtKm(zones: readonly ZoneMark[], km: number): string {
@@ -310,6 +327,7 @@ function restDay(
     hasFerry: false,
     liters: 0,
     fuelCostRub: 0,
+    borders: [],
     ...sunForDay(input, date, after.endKm, after.endKm),
     warnings: [],
   };
@@ -332,6 +350,18 @@ export function planTrip(input: TripInput): TripPlan {
         : dayBoundariesKm(input.legs, split);
   const distanceKm = boundaries[boundaries.length - 1] ?? 0;
 
+  const crossings: BorderCrossing[] = [];
+  const marks = countryMarks(input.zones);
+  marks.forEach((mark, i) => {
+    const prev = marks[i - 1];
+    // Участок с неопределённой страной не даёт предупреждения ни на входе, ни на выходе.
+    if (prev?.country && mark.country && prev.country !== mark.country) {
+      crossings.push({ km: mark.fromKm, from: prev.country, to: mark.country });
+    }
+  });
+  const priceMarks = input.fuelPriceMarks?.length
+    ? input.fuelPriceMarks
+    : [{ fromKm: 0, priceRub: input.fuelPriceRub }];
   const rest = new Set(
     (input.restAfterDays ?? []).filter(
       (n) => Number.isInteger(n) && n >= 1 && n < boundaries.length,
@@ -375,10 +405,17 @@ export function planTrip(input: TripInput): TripPlan {
       hasToll: daySegments.some((s) => s.toll === true),
       hasFerry: daySegments.some((s) => s.ferry === true),
       liters,
-      fuelCostRub: fuelCost(liters, input.fuelPriceRub),
+      fuelCostRub: fuelCostByMarks(priceMarks, startKm, endKm, liters),
+      borders: crossings.filter((c) => c.km > startKm && c.km <= endKm),
     };
     const sun = sunForDay(input, date, startKm, endKm);
     const warnings = dayWarnings(day, input.profile);
+    for (const border of day.borders) {
+      warnings.push({
+        kind: "border",
+        message: `Граница: ${countryName(border.from)} → ${countryName(border.to)} (${Math.round(border.km)}-й км). Проверьте документы, страховку и правила въезда`,
+      });
+    }
     if (sun.sunset && arrival > sun.sunset) {
       warnings.push({
         kind: "afterSunset",
@@ -409,5 +446,6 @@ export function planTrip(input: TripInput): TripPlan {
     days,
     hasToll: days.some((d) => d.hasToll),
     hasFerry: days.some((d) => d.hasFerry),
+    countries: [...new Set(marks.map((m) => m.country).filter((c): c is string => c !== null))],
   };
 }
