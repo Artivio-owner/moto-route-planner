@@ -327,7 +327,9 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
     [
       "Топливо",
       budget.fuel,
-      `${formatLiters(plan.liters)} × ${String(result.fuelPriceRub).replace(".", ",")} ₽/л${edited(result.fuelPriceEdited)}`,
+      result.countryFuelPrices.length > 1
+        ? `${formatLiters(plan.liters)} по ценам стран: ${result.countryFuelPrices.map((c) => `${countryName(c.country)} ${String(c.priceRub).replace(".", ",")} ₽/л`).join(", ")}${edited(result.fuelPriceEdited)}`
+        : `${formatLiters(plan.liters)} × ${String(result.fuelPriceRub).replace(".", ",")} ₽/л${edited(result.fuelPriceEdited)}`,
     ],
     [
       "Жильё",
