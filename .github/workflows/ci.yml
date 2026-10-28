@@ -50,7 +50,11 @@ jobs:
         working-directory: infra/graphhopper
         run: |
           python3 test/make_synthetic.py > /tmp/synthetic.osm
+          # Высоты: тестовые файлы SRTM вместо скачивания (E-01).
+          python3 test/make_srtm.py /tmp/srtm
           java -Xmx1g -Ddw.graphhopper.datareader.file=/tmp/synthetic.osm \
+            -Ddw.graphhopper.graph.elevation.provider=srtm \
+            -Ddw.graphhopper.graph.elevation.cache_dir=/tmp/srtm \
             -Ddw.graphhopper.graph.location=/tmp/graph -jar "$GITHUB_WORKSPACE/graphhopper.jar" server config.yml > /tmp/gh.log 2>&1 &
           for i in $(seq 1 60); do curl -sf -o /dev/null localhost:8989/info && break; sleep 2; done
       - name: Проверить профили

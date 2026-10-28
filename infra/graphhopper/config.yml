@@ -36,6 +36,10 @@ graphhopper:
   routing.non_ch.max_waypoint_distance: 1000000
   import.osm.ignored_highways: footway,construction,cycleway,path,steps,bridleway,pedestrian
   graph.dataaccess.default_type: RAM_STORE
+  # Высоты для профиля (E-01, ADR-0016): CGIAR SRTM до 60° с. ш. и GMTED2010 севернее.
+  # Файлы скачиваются при первой сборке графа в cache_dir. В CI: srtm с тестовыми файлами.
+  graph.elevation.provider: multi
+  graph.elevation.cache_dir: /elevation-cache
   # Названия улиц по-русски, если в OSM есть name:ru.
   datareader.preferred_language: ru
 

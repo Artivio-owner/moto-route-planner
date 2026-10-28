@@ -70,3 +70,46 @@ export function simplifyIndices(points: readonly LonLat[], toleranceKm: number):
   });
   return result;
 }
+
+/**
+ * Упрощение профиля высоты (E-01) тем же способом Дугласа — Пекера, но по расстоянию
+ * и высоте: точка остаётся, если высота отклоняется от прямой между соседями больше допуска.
+ */
+export function simplifyProfileIndices(
+  km: readonly number[],
+  elevation: readonly number[],
+  toleranceM: number,
+): number[] {
+  const n = Math.min(km.length, elevation.length);
+  if (n <= 2) return Array.from({ length: n }, (_, i) => i);
+  const keep = new Uint8Array(n);
+  keep[0] = 1;
+  keep[n - 1] = 1;
+  const stack: [number, number][] = [[0, n - 1]];
+  while (stack.length) {
+    const [first, last] = stack.pop() as [number, number];
+    const k0 = km[first] ?? 0;
+    const k1 = km[last] ?? 0;
+    const e0 = elevation[first] ?? 0;
+    const e1 = elevation[last] ?? 0;
+    let maxDev = 0;
+    let index = -1;
+    for (let i = first + 1; i < last; i++) {
+      const t = k1 === k0 ? 0 : ((km[i] ?? 0) - k0) / (k1 - k0);
+      const dev = Math.abs((elevation[i] ?? 0) - (e0 + t * (e1 - e0)));
+      if (dev > maxDev) {
+        maxDev = dev;
+        index = i;
+      }
+    }
+    if (index !== -1 && maxDev > toleranceM) {
+      keep[index] = 1;
+      stack.push([first, index], [index, last]);
+    }
+  }
+  const result: number[] = [];
+  keep.forEach((k, i) => {
+    if (k) result.push(i);
+  });
+  return result;
+}

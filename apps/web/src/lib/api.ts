@@ -8,6 +8,8 @@ export interface RouteLeg {
   segments: Segment[];
   geometry: LonLat[];
   geometryKm: number[];
+  /** Высота точек geometry, м (E-01); нет, если сервер без данных высот. */
+  elevation?: number[];
 }
 
 export interface RouteResponse {

@@ -125,20 +125,65 @@ export function computePlan(state: PlannerState, route: RouteResponse): PlanResu
   };
 }
 
+export interface RouteLine {
+  points: LonLat[];
+  km: number[];
+  /** Высоты точек, м, если они есть у всех отрезков (E-01). */
+  elevation?: number[];
+}
+
 /** Геометрия всего маршрута с километрами от старта. */
-export function routeLine(route: RouteResponse): { points: LonLat[]; km: number[] } {
+export function routeLine(route: RouteResponse): RouteLine {
   const points: LonLat[] = [];
   const km: number[] = [];
+  const elevation: number[] = [];
+  const withElevation = route.legs.length > 0 && route.legs.every((l) => l.elevation);
   let offset = 0;
   for (const leg of route.legs) {
     leg.geometry.forEach((p, i) => {
       if (i === 0 && points.length) return;
       points.push(p);
       km.push(offset + (leg.geometryKm[i] ?? 0));
+      if (withElevation) elevation.push(leg.elevation?.[i] ?? 0);
     });
     offset += leg.distanceKm;
   }
-  return { points, km };
+  return withElevation ? { points, km, elevation } : { points, km };
+}
+
+export interface ElevationStats {
+  ascentM: number;
+  descentM: number;
+  minM: number;
+  maxM: number;
+}
+
+/** Набор и сброс высоты на участке [fromKm, toKm] по точкам профиля; null без данных высот. */
+export function elevationStats(
+  line: RouteLine,
+  fromKm: number,
+  toKm: number,
+): ElevationStats | null {
+  const { elevation, km } = line;
+  if (!elevation?.length) return null;
+  let ascentM = 0;
+  let descentM = 0;
+  let minM = Infinity;
+  let maxM = -Infinity;
+  let prev: number | null = null;
+  for (let i = 0; i < elevation.length; i++) {
+    const k = km[i] ?? 0;
+    if (k < fromKm || k > toKm) continue;
+    const e = elevation[i] ?? 0;
+    minM = Math.min(minM, e);
+    maxM = Math.max(maxM, e);
+    if (prev !== null) {
+      if (e > prev) ascentM += e - prev;
+      else descentM += prev - e;
+    }
+    prev = e;
+  }
+  return prev === null ? null : { ascentM, descentM, minM, maxM };
 }
 
 /** Точка на линии на отметке atKm (линейная интерполяция). */

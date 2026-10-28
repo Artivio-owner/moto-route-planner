@@ -23,6 +23,7 @@ services:
     volumes:
       - ${DATA_DIR:-./data}/osm:/data:ro
       - graph-cache:/graph-cache
+      - elevation-cache:/elevation-cache
     restart: unless-stopped
 
   photon:
@@ -50,4 +51,5 @@ services:
 
 volumes:
   graph-cache:
+  elevation-cache:
   caddy-data:

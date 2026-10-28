@@ -73,6 +73,14 @@ curvy = route((55.0, 38.4), (55.0, 38.7), "moto_curvy")
 check("moto выбирает прямую магистраль", values(straight, "street_name") == {"Прямая"})
 check("moto_curvy выбирает серпантин", "Серпантин" in values(curvy, "street_name"))
 
+# Высоты (E-01): в CI граф собран с тестовыми файлами SRTM («холм» до 450 м).
+body = {"points": [[37.3, 55.0], [37.9, 55.0]], "profile": "moto", "points_encoded": False, "elevation": True}
+request = urllib.request.Request(URL, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+with urllib.request.urlopen(request, timeout=30) as response:
+    ele_path = json.load(response)["paths"][0]
+check("высоты: у точек есть третья координата", all(len(c) == 3 for c in ele_path["points"]["coordinates"]))
+check("высоты: набор высоты посчитан", ele_path.get("ascend", 0) > 0)
+
 if failures:
     sys.exit(f"Не прошло проверок: {len(failures)}")
 print("Все проверки прошли")
