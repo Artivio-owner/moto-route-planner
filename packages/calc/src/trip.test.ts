@@ -171,4 +171,33 @@ describe("planTrip", () => {
       RangeError,
     );
   });
+
+  it("дневка после 1-го дня: день 0 км, даты сдвигаются, ночей +1 (C-11)", () => {
+    const plan = planTrip({ ...base, restAfterDays: [1] });
+    expect(plan.days.map((d) => Math.round(d.distanceKm))).toEqual([400, 0, 400, 200]);
+    expect(plan.days.map((d) => d.rest)).toEqual([false, true, false, false]);
+    expect(plan.days.map((d) => d.ridingNumber)).toEqual([1, 1, 2, 3]);
+    expect(plan.days.map((d) => d.number)).toEqual([1, 2, 3, 4]);
+    expect(plan.days.map((d) => d.date)).toEqual([
+      "2026-07-01",
+      "2026-07-02",
+      "2026-07-03",
+      "2026-07-04",
+    ]);
+    expect(plan.nights).toBe(3);
+    expect(plan.restDays).toBe(1);
+    const restDay = plan.days[1];
+    expect(restDay?.startKm).toBe(400);
+    expect(restDay?.fuelStopsKm).toEqual([]);
+    expect(restDay?.warnings).toEqual([]);
+    // Итоги по топливу и километрам не меняются.
+    expect(plan.distanceKm).toBeCloseTo(planTrip(base).distanceKm);
+    expect(plan.liters).toBeCloseTo(planTrip(base).liters);
+  });
+
+  it("дневка после последнего дня и неверные номера игнорируются", () => {
+    const plan = planTrip({ ...base, restAfterDays: [3, 0, -1, 1.5, 99] });
+    expect(plan.days).toHaveLength(3);
+    expect(plan.restDays).toBe(0);
+  });
 });

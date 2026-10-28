@@ -66,6 +66,8 @@ export interface RouteState {
   fuelPriceRub?: number;
   rubPerUsd?: number;
   budget?: BudgetState;
+  /** Дневки (C-11): номера ходовых дней, после которых день отдыха. */
+  restAfterDays?: number[];
 }
 
 const COORD_SCALE = 1e5; // ≈ 1 м
@@ -88,17 +90,20 @@ type Packed = [
   fuelType: string,
   fuelPriceRub: number | null,
   rubPerUsd: number | null,
-  budget?: [
-    lodging: number,
-    rooms: number,
-    food: number,
-    flags: number,
-    otherRub: number,
-    reservePct: number,
-    roomPrice: number | null,
-    foodPrice: number | null,
-    coffeePrice: number | null,
-  ],
+  budget?:
+    | null
+    | [
+        lodging: number,
+        rooms: number,
+        food: number,
+        flags: number,
+        otherRub: number,
+        reservePct: number,
+        roomPrice: number | null,
+        foodPrice: number | null,
+        coffeePrice: number | null,
+      ],
+  restAfterDays?: number[],
 ];
 
 function packSplit(split: RouteState["split"]): Packed[7] {
@@ -204,7 +209,12 @@ function pack(state: RouteState): Packed {
     state.fuelType,
     state.fuelPriceRub ?? null,
     state.rubPerUsd ?? null,
-    ...(state.budget ? [packBudget(state.budget)] : []),
+    // Хвост необязателен: старые ссылки без бюджета и дневок короче.
+    ...(state.restAfterDays?.length
+      ? [state.budget ? packBudget(state.budget) : null, state.restAfterDays]
+      : state.budget
+        ? [packBudget(state.budget)]
+        : []),
   ] as Packed;
 }
 
@@ -213,7 +223,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 function unpack(raw: unknown): RouteState {
-  if (!Array.isArray(raw) || raw[0] !== STATE_VERSION || (raw.length !== 12 && raw.length !== 13)) {
+  if (!Array.isArray(raw) || raw[0] !== STATE_VERSION || raw.length < 12 || raw.length > 14) {
     throw new Error("Ссылка повреждена или создана другой версией сервиса");
   }
   const [
@@ -230,6 +240,7 @@ function unpack(raw: unknown): RouteState {
     price,
     rate,
     budget,
+    restAfterDays,
   ] = raw as Packed;
   if (!Array.isArray(points) || !Array.isArray(profile) || profile.length !== 10) {
     throw new Error("Ссылка повреждена");
@@ -282,7 +293,16 @@ function unpack(raw: unknown): RouteState {
   };
   if (isFiniteNumber(price)) state.fuelPriceRub = price;
   if (isFiniteNumber(rate)) state.rubPerUsd = rate;
-  if (budget !== undefined) state.budget = unpackBudget(budget);
+  if (budget !== undefined && budget !== null) state.budget = unpackBudget(budget);
+  if (restAfterDays !== undefined) {
+    if (
+      !Array.isArray(restAfterDays) ||
+      !restAfterDays.every((n) => Number.isInteger(n) && n >= 1)
+    ) {
+      throw new Error("Ссылка повреждена: дневки");
+    }
+    if (restAfterDays.length) state.restAfterDays = restAfterDays;
+  }
   return state;
 }
 

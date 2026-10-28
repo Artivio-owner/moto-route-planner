@@ -62,6 +62,11 @@ export interface TripInput {
   stops?: StopSettings;
   /** Координаты точки на отметке км: нужны для восхода и заката (C-06). */
   positionAtKm?: (km: number) => { lat: number; lon: number };
+  /**
+   * Дневки (C-11): номера ходовых дней (с 1), после которых следует день отдыха
+   * в точке финиша. Номера за пределами ходовых дней, кроме последнего, игнорируются.
+   */
+  restAfterDays?: readonly number[];
 }
 
 export type DayWarningKind = "overDailyKm" | "overDailyHours" | "heavyDay" | "afterSunset";
@@ -72,8 +77,12 @@ export interface DayWarning {
 }
 
 export interface DayPlan {
-  /** Номер дня с 1. */
+  /** Номер дня с 1 (календарный, дневки считаются). */
   number: number;
+  /** Дневка: день отдыха, километраж 0 (C-11). */
+  rest: boolean;
+  /** Номер ходового дня с 1; у дневки номер дня, после которого она идёт. */
+  ridingNumber: number;
   date: string;
   startKm: number;
   endKm: number;
@@ -110,6 +119,8 @@ export interface TripPlan {
   fuelCostRub: number;
   fuelStops: number;
   nights: number;
+  /** Число дневок. */
+  restDays: number;
   days: DayPlan[];
   hasToll: boolean;
   hasFerry: boolean;
@@ -269,6 +280,41 @@ function sunForDay(
   };
 }
 
+/** День отдыха в точке финиша ходового дня: без километров, топлива и предупреждений. */
+function restDay(
+  input: TripInput,
+  stops: StopSettings,
+  after: Pick<DayPlan, "endKm" | "endTimeZone" | "ridingNumber" | "date">,
+  number: number,
+): DayPlan {
+  const date = addDays(after.date, 1);
+  const at = zonedTimeToInstant(date, stops.dayStartMin, after.endTimeZone);
+  return {
+    number,
+    rest: true,
+    ridingNumber: after.ridingNumber,
+    date,
+    startKm: after.endKm,
+    endKm: after.endKm,
+    distanceKm: 0,
+    drivingH: 0,
+    fuelStopsKm: [],
+    stopsH: 0,
+    totalH: 0,
+    startTimeZone: after.endTimeZone,
+    endTimeZone: after.endTimeZone,
+    departure: at,
+    arrival: at,
+    zoneShiftH: 0,
+    hasToll: false,
+    hasFerry: false,
+    liters: 0,
+    fuelCostRub: 0,
+    ...sunForDay(input, date, after.endKm, after.endKm),
+    warnings: [],
+  };
+}
+
 export function planTrip(input: TripInput): TripPlan {
   const stops = input.stops ?? DEFAULT_STOPS;
   const group = normalizeGroup(input.group);
@@ -286,6 +332,11 @@ export function planTrip(input: TripInput): TripPlan {
         : dayBoundariesKm(input.legs, split);
   const distanceKm = boundaries[boundaries.length - 1] ?? 0;
 
+  const rest = new Set(
+    (input.restAfterDays ?? []).filter(
+      (n) => Number.isInteger(n) && n >= 1 && n < boundaries.length,
+    ),
+  );
   const days: DayPlan[] = [];
   let startKm = 0;
   boundaries.forEach((endKm, index) => {
@@ -295,7 +346,7 @@ export function planTrip(input: TripInput): TripPlan {
     const lunch = drivingH >= stops.lunchAfterDrivingH ? stops.lunchMin : 0;
     const stopsH = (dayFuelStops.length * stops.fuelStopMin + lunch) / 60;
     const totalH = drivingH + stopsH;
-    const date = addDays(input.startDate, index);
+    const date = addDays(input.startDate, days.length);
     const startTimeZone = zoneAtKm(input.zones, startKm);
     const endTimeZone = zoneAtKm(input.zones, endKm);
     const departure = zonedTimeToInstant(date, stops.dayStartMin, startTimeZone);
@@ -305,7 +356,9 @@ export function planTrip(input: TripInput): TripPlan {
     const dayDistance = endKm - startKm;
     const liters = fuelLiters(dayDistance, input.profile.consumptionLPer100Km, group.motorcycles);
     const day = {
-      number: index + 1,
+      number: days.length + 1,
+      rest: false,
+      ridingNumber: index + 1,
       date,
       startKm,
       endKm,
@@ -336,6 +389,7 @@ export function planTrip(input: TripInput): TripPlan {
       warnings.push({ kind: "afterSunset", message: "Полярная ночь: весь день в темноте" });
     }
     days.push({ ...day, ...sun, warnings });
+    if (rest.has(index + 1)) days.push(restDay(input, stops, day, days.length + 1));
     startKm = endKm;
   });
 
@@ -349,7 +403,9 @@ export function planTrip(input: TripInput): TripPlan {
     liters: sum((d) => d.liters),
     fuelCostRub: sum((d) => d.fuelCostRub),
     fuelStops: allFuelStops.length,
+    // Ночей = дни минус 1, дневки уже входят в число дней (спецификация 08).
     nights: Math.max(0, days.length - 1),
+    restDays: rest.size,
     days,
     hasToll: days.some((d) => d.hasToll),
     hasFerry: days.some((d) => d.hasFerry),

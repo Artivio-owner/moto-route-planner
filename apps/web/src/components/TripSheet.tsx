@@ -30,6 +30,8 @@ interface Props {
   onGpx(): void;
   onPdf(): void;
   pdfBusy: boolean;
+  /** Дневка после ходового дня (C-11). */
+  onToggleRest(afterDay: number): void;
 }
 
 /** Путевой лист в интерфейсе: сводка, дни, предупреждения, действия. */
@@ -45,6 +47,7 @@ export function TripSheet({
   onGpx,
   onPdf,
   pdfBusy,
+  onToggleRest,
 }: Props) {
   if (error) {
     return (
@@ -100,7 +103,8 @@ export function TripSheet({
         </div>
       </div>
       <p className="hint">
-        Запас хода около {formatKm(plan.rangeKm)}. Ночей в пути: {plan.nights}.
+        Запас хода около {formatKm(plan.rangeKm)}. Ночей в пути: {plan.nights}
+        {plan.restDays > 0 ? `, из них дневок: ${plan.restDays}` : ""}.
       </p>
       <BudgetSummary result={result} currency={currency} />
       {longRoute && (
@@ -132,6 +136,34 @@ export function TripSheet({
         {plan.days.map((day, i) => {
           const label = dayLabels[i];
           const w = weather[i];
+          const isLastRiding = !plan.days.slice(i + 1).some((d) => !d.rest);
+          if (day.rest) {
+            return (
+              <li key={day.number} className="day rest">
+                <div className="day-title">
+                  День {day.number} · {formatDate(day.date)} · дневка
+                </div>
+                {label && <div className="day-route">Отдых: {label.to}</div>}
+                <div className="day-meta">
+                  <span>0 км</span>
+                  {day.sunset && <span>закат {formatLocalTime(day.sunset, day.endTimeZone)}</span>}
+                  {w && (
+                    <span>
+                      {describeWeather(w)} <span className="mark">{weatherSource(w)}</span>
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="btn ghost small"
+                  onClick={() => onToggleRest(day.ridingNumber)}
+                >
+                  Убрать дневку
+                </button>
+              </li>
+            );
+          }
+          const restNext = plan.days[i + 1]?.rest === true;
           return (
             <li key={day.number} className="day">
               <div className="day-title">
@@ -184,6 +216,15 @@ export function TripSheet({
                   {w.message}
                 </p>
               ))}
+              {!isLastRiding && !restNext && (
+                <button
+                  type="button"
+                  className="btn ghost small"
+                  onClick={() => onToggleRest(day.ridingNumber)}
+                >
+                  Дневка после этого дня
+                </button>
+              )}
             </li>
           );
         })}

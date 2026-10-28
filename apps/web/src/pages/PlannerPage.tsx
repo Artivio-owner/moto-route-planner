@@ -137,7 +137,7 @@ export function PlannerPage() {
       return placeNames[key] ? `≈ ${placeNames[key]}` : `${Math.round(atKm)}-й км`;
     };
     return result.plan.days.map((day) => ({
-      from: day.startKm === 0 ? (points[0]?.name ?? "Старт") : nameAt(day.startKm),
+      from: day.startKm === 0 && !day.rest ? (points[0]?.name ?? "Старт") : nameAt(day.startKm),
       to: nameAt(day.endKm),
     }));
   }, [result, route, state, placeNames]);
@@ -181,7 +181,11 @@ export function PlannerPage() {
       result
         ? result.plan.days
             .slice(0, -1)
-            .map((d) => ({ position: pointAtKm(line, d.endKm), label: `Ночь ${d.number}` }))
+            .filter((d, i) => !result.plan.days[i + 1]?.rest)
+            .map((d) => ({
+              position: pointAtKm(line, d.endKm),
+              label: d.rest ? `Дневка, ночь ${d.number}` : `Ночь ${d.number}`,
+            }))
         : [],
     [result, line],
   );
@@ -213,10 +217,16 @@ export function PlannerPage() {
   function gpx() {
     if (!result) return;
     const points = completePoints(state);
-    const days = result.plan.days.map((d, i) => ({
-      name: `День ${d.number}: ${dayLabels[i]?.from ?? ""} — ${dayLabels[i]?.to ?? ""}`,
-      points: sliceLine(line, d.startKm, d.endKm).map(([lon, lat]) => ({ lat, lon })),
-    }));
+    const days = result.plan.days.flatMap((d, i) =>
+      d.rest
+        ? []
+        : [
+            {
+              name: `День ${d.number}: ${dayLabels[i]?.from ?? ""} — ${dayLabels[i]?.to ?? ""}`,
+              points: sliceLine(line, d.startKm, d.endKm).map(([lon, lat]) => ({ lat, lon })),
+            },
+          ],
+    );
     const file = buildGpx({
       name: routeTitle(points),
       createdAt: new Date().toISOString(),
@@ -313,6 +323,7 @@ export function PlannerPage() {
           onGpx={gpx}
           onPdf={() => void pdf()}
           pdfBusy={pdfBusy}
+          onToggleRest={(afterDay) => dispatch({ type: "toggleRest", afterDay })}
         />
       </div>
       {toast && (

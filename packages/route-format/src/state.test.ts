@@ -44,6 +44,17 @@ describe("состояние в ссылке", () => {
     expect((await decodeState(await encodeState(sampleState(true)))).budget).toBeUndefined();
   });
 
+  it("дневки в ссылке, с бюджетом и без", async () => {
+    const withBudget = { ...sampleState(true), restAfterDays: [2, 5] };
+    expect((await decodeState(await encodeState(withBudget))).restAfterDays).toEqual([2, 5]);
+    const noBudget = { ...sampleState(false), restAfterDays: [1] };
+    delete noBudget.budget;
+    const decoded = await decodeState(await encodeState(noBudget));
+    expect(decoded.restAfterDays).toEqual([1]);
+    expect(decoded.budget).toBeUndefined();
+    expect((await decodeState(await encodeState(sampleState(true)))).restAfterDays).toBeUndefined();
+  });
+
   it("строка годится для адреса без экранирования", async () => {
     expect(await encodeState(sampleState(true))).toMatch(/^[A-Za-z0-9_-]+$/);
   });
