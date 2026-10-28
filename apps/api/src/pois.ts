@@ -14,6 +14,9 @@ export const POI_KINDS = [
   "hostel",
   "camp_site",
   "chalet",
+  "city",
+  "town",
+  "village",
 ] as const;
 export type PoiKind = (typeof POI_KINDS)[number];
 
@@ -31,7 +34,18 @@ export interface RoutePoi extends Poi {
 }
 
 /** Насколько далеко от линии маршрута ищем: АЗС у самой дороги, жильё чуть дальше. */
-export const SEARCH_RADIUS_KM: Record<"fuel" | "lodging", number> = { fuel: 1, lodging: 5 };
+export const SEARCH_RADIUS_KM: Record<"fuel" | "lodging" | "place", number> = {
+  fuel: 1,
+  lodging: 5,
+  place: 3,
+};
+
+const PLACE_KINDS = new Set<PoiKind>(["city", "town", "village"]);
+
+function radiusOf(kind: PoiKind): number {
+  if (kind === "fuel") return SEARCH_RADIUS_KM.fuel;
+  return PLACE_KINDS.has(kind) ? SEARCH_RADIUS_KM.place : SEARCH_RADIUS_KM.lodging;
+}
 const CELL_DEG = 0.1;
 const RS = String.fromCharCode(0x1e);
 const SAMPLE_STEP_KM = 1;
@@ -43,6 +57,8 @@ interface Feature {
 
 function kindOf(tags: Record<string, unknown>): PoiKind | null {
   if (tags.amenity === "fuel") return "fuel";
+  // Населённые пункты нужны для привязки границ дня (C-10).
+  if (tags.place === "city" || tags.place === "town" || tags.place === "village") return tags.place;
   const tourism = tags.tourism;
   return typeof tourism === "string" && (POI_KINDS as readonly string[]).includes(tourism)
     ? (tourism as PoiKind)
@@ -141,10 +157,9 @@ export class PoiIndex {
    */
   alongRoute(points: readonly LonLat[], km: readonly number[], offsetKm = 0): RoutePoi[] {
     const best = new Map<Poi, RoutePoi>();
-    const maxRadius = Math.max(SEARCH_RADIUS_KM.fuel, SEARCH_RADIUS_KM.lodging);
+    const maxRadius = Math.max(...Object.values(SEARCH_RADIUS_KM));
     const keep = (poi: Poi, offKm: number, atKm: number): void => {
-      const radius = poi.kind === "fuel" ? SEARCH_RADIUS_KM.fuel : SEARCH_RADIUS_KM.lodging;
-      if (offKm > radius) return;
+      if (offKm > radiusOf(poi.kind)) return;
       const known = best.get(poi);
       if (!known || offKm < known.offKm) {
         best.set(poi, { ...poi, km: offsetKm + atKm, offKm: Math.round(offKm * 100) / 100 });

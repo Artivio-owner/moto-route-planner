@@ -96,6 +96,7 @@ pois = [
     ((55.001, 37.3), {"amenity": "fuel", "name": "АЗС у Объезда", "brand": "Тест"}),
     ((55.012, 37.35), {"tourism": "hotel", "name": "Гостиница «Синтетика»"}),
     ((55.2, 37.35), {"tourism": "camp_site", "name": "Далёкий кемпинг"}),
+    ((55.005, 37.6), {"place": "village", "name": "Деревня Середина"}),
 ]
 
 used = {n for _, ids, _ in ways for n in ids}

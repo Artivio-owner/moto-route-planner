@@ -127,11 +127,14 @@ export function MapView({
     if (!map || !ready) return;
     (map.getSource("pois") as GeoJSONSource | undefined)?.setData({
       type: "FeatureCollection",
-      features: pois.map((p) => ({
-        type: "Feature",
-        properties: { kind: p.kind, name: p.name },
-        geometry: { type: "Point", coordinates: [p.lon, p.lat] },
-      })),
+      // На карте только АЗС и жильё; населённые пункты нужны лишь для границ дней.
+      features: pois
+        .filter((p) => !["city", "town", "village"].includes(p.kind))
+        .map((p) => ({
+          type: "Feature",
+          properties: { kind: p.kind, name: p.name },
+          geometry: { type: "Point", coordinates: [p.lon, p.lat] },
+        })),
     });
   }, [pois, ready]);
 

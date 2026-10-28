@@ -160,9 +160,13 @@ export function PlannerPage() {
       const key = Math.round(atKm).toString();
       return placeNames[key] ? `≈ ${placeNames[key]}` : `${Math.round(atKm)}-й км`;
     };
+    // Граница, привязанная к населённому пункту (C-10), подписывается его названием.
+    const placeAt = new Map<number, string>();
+    for (const day of result.plan.days) if (day.endPlace) placeAt.set(day.endKm, day.endPlace);
+    const label = (atKm: number): string => placeAt.get(atKm) ?? nameAt(atKm);
     return result.plan.days.map((day) => ({
-      from: day.startKm === 0 && !day.rest ? (points[0]?.name ?? "Старт") : nameAt(day.startKm),
-      to: nameAt(day.endKm),
+      from: day.startKm === 0 && !day.rest ? (points[0]?.name ?? "Старт") : label(day.startKm),
+      to: label(day.endKm),
     }));
   }, [result, route, state, placeNames]);
 
@@ -170,6 +174,7 @@ export function PlannerPage() {
     if (!result || state.split.mode !== "km") return;
     const missing = result.plan.days
       .slice(0, -1)
+      .filter((d) => !d.endPlace)
       .map((d) => Math.round(d.endKm))
       .filter((k) => placeNames[String(k)] === undefined);
     if (!missing.length) return;

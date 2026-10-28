@@ -89,7 +89,14 @@ export function computePlan(state: PlannerState, route: RouteResponse): PlanResu
     restAfterDays: state.restAfterDays ?? [],
     // Слой АЗС есть на сервере: заправки на реальных АЗС (v0.3, P-07).
     ...(route.pois
-      ? { fuelStationsKm: route.pois.filter((p) => p.kind === "fuel").map((p) => p.km) }
+      ? {
+          fuelStationsKm: route.pois.filter((p) => p.kind === "fuel").map((p) => p.km),
+          // Границы дней тянутся к населённым пунктам (C-10).
+          places: route.pois.flatMap((p) => {
+            const rank = PLACE_RANK[p.kind];
+            return rank && p.name ? [{ km: p.km, name: p.name, rank }] : [];
+          }),
+        }
       : {}),
   });
   const b = state.budget;
@@ -241,7 +248,24 @@ export function bounds(points: readonly LonLat[]): [LonLat, LonLat] | null {
   ];
 }
 
-export const LODGING_KIND_LABELS: Record<Exclude<PoiKind, "fuel">, string> = {
+export type LodgingKind = Exclude<PoiKind, "fuel" | "city" | "town" | "village">;
+
+const LODGING_KINDS = new Set<PoiKind>([
+  "hotel",
+  "motel",
+  "guest_house",
+  "hostel",
+  "camp_site",
+  "chalet",
+]);
+
+export function isLodging(poi: RoutePoi): poi is RoutePoi & { kind: LodgingKind } {
+  return LODGING_KINDS.has(poi.kind);
+}
+
+const PLACE_RANK: Partial<Record<PoiKind, 1 | 2 | 3>> = { village: 1, town: 2, city: 3 };
+
+export const LODGING_KIND_LABELS: Record<LodgingKind, string> = {
   hotel: "гостиница",
   motel: "мотель",
   guest_house: "гостевой дом",
@@ -258,7 +282,7 @@ export function lodgingNear(
   withinKm = 15,
 ): RoutePoi[] {
   return (pois ?? [])
-    .filter((p) => p.kind !== "fuel" && Math.abs(p.km - atKm) <= withinKm)
+    .filter((p) => isLodging(p) && Math.abs(p.km - atKm) <= withinKm)
     .sort((a, b) => Math.abs(a.km - atKm) + a.offKm - (Math.abs(b.km - atKm) + b.offKm))
     .slice(0, limit);
 }
@@ -275,7 +299,7 @@ export function fuelStationsBetween(
 
 /** «Гостиница «Дорога», 1,2 км от дороги» для списка ночлега. */
 export function describeLodging(poi: RoutePoi): string {
-  const kind = poi.kind === "fuel" ? "АЗС" : LODGING_KIND_LABELS[poi.kind];
+  const kind = isLodging(poi) ? LODGING_KIND_LABELS[poi.kind] : "АЗС";
   const name = poi.name ? `${poi.name} (${kind})` : kind[0]?.toUpperCase() + kind.slice(1);
   const off =
     poi.offKm < 0.3

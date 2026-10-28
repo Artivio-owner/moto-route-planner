@@ -213,4 +213,12 @@ describe("planTrip", () => {
     );
     expect(planTrip(base).fuelStopsAtStations).toBe(false);
   });
+
+  it("граница дня у населённого пункта, ручной режим не трогается (C-10)", () => {
+    const places = [{ km: 380, name: "Тверь", rank: 3 as const }];
+    const plan = planTrip({ ...base, places });
+    expect(plan.days.map((d) => Math.round(d.endKm))).toEqual([380, 800, 1000]);
+    expect(plan.days[0]?.endPlace).toBe("Тверь");
+    expect(plan.days[1]?.endPlace).toBe("");
+  });
 });
