@@ -453,6 +453,14 @@ select {
   border-left: 4px solid var(--accent);
   padding: 6px 0 6px 10px;
 }
+.day.rest {
+  border-left-style: dashed;
+  border-left-color: var(--line);
+}
+.day .btn.small {
+  margin-top: 6px;
+  font-size: 13px;
+}
 .day-title {
   font-weight: 700;
 }

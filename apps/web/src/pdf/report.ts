@@ -256,7 +256,7 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
       : (presets.find((p) => p.id === state.profile.presetId)?.name ?? "свой профиль");
   w.text(
     [
-      `${formatDate(state.startDate)} — ${lastDay ? formatDate(lastDay.date) : ""}, ${pluralDays(plan.days.length)}`,
+      `${formatDate(state.startDate)} — ${lastDay ? formatDate(lastDay.date) : ""}, ${pluralDays(plan.days.length)}${plan.restDays ? `, из них дневок: ${plan.restDays}` : ""}`,
       `Людей: ${plan.group.people}, мотоциклов: ${plan.group.motorcycles}. Мотоцикл: ${presetName}, бак ${state.profile.tankL} л, расход ${String(state.profile.consumptionLPer100Km).replace(".", ",")} л/100 км`,
       `Валюта: ${cur === "RUB" ? "рубли" : `доллары (курс ${String(rubPerUsd).replace(".", ",")} ₽ за $${result.rateEdited ? ", ваш" : ", ориентировочно"})`}. ${state.avoidUnpaved ? "Без грунтовых дорог" : "Грунтовые дороги разрешены"}${state.roundTrip ? ", с возвратом" : ""}.`,
       `Рассчитано: ${now.toLocaleDateString("ru-RU")}`,
@@ -383,7 +383,11 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
   );
 
   // 3. Карта маршрута.
-  const nights = plan.days.slice(0, -1).map((d) => pointAtKm(line, d.endKm));
+  // Дневка стоит в той же точке, что и ночь перед ней: точку не дублируем.
+  const nights = plan.days
+    .slice(0, -1)
+    .filter((_, i) => !plan.days[i + 1]?.rest)
+    .map((d) => pointAtKm(line, d.endKm));
   const mapW = A4.w - 2 * M;
   const mapH = mapW * 0.62;
   // Заголовок не должен остаться в конце страницы без карты.
@@ -447,25 +451,35 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
       day.zoneShiftH ? `пояс ${day.zoneShiftH > 0 ? "+" : ""}${day.zoneShiftH} ч` : "",
       ...day.warnings.map((x) => x.message),
     ].filter(Boolean);
-    const values = [
-      `${day.number}\n${formatDate(day.date)}`,
-      label ? `${label.from} — ${label.to}` : "",
-      formatKm(day.distanceKm).replace("\u00a0км", ""),
-      formatHours(day.totalH).replace("\u00a0ч", ""),
-      [
-        localTimeWithZone(day.departure, day.startTimeZone),
-        localTimeWithZone(day.arrival, day.endTimeZone),
-        day.sunset
-          ? `закат ${formatLocalTime(day.sunset, day.endTimeZone)}`
-          : day.polar === "day"
-            ? "полярный день"
-            : "",
-      ]
-        .filter(Boolean)
-        .join("\n"),
-      String(day.fuelStopsKm.length),
-      `${formatLiters(day.liters)}\n${m(day.fuelCostRub)}`,
-    ];
+    const values = day.rest
+      ? [
+          `${day.number}\n${formatDate(day.date)}`,
+          `Дневка: ${label?.to ?? ""}`,
+          "0",
+          "—",
+          day.sunset ? `закат ${formatLocalTime(day.sunset, day.endTimeZone)}` : "",
+          "0",
+          "—",
+        ]
+      : [
+          `${day.number}\n${formatDate(day.date)}`,
+          label ? `${label.from} — ${label.to}` : "",
+          formatKm(day.distanceKm).replace("\u00a0км", ""),
+          formatHours(day.totalH).replace("\u00a0ч", ""),
+          [
+            localTimeWithZone(day.departure, day.startTimeZone),
+            localTimeWithZone(day.arrival, day.endTimeZone),
+            day.sunset
+              ? `закат ${formatLocalTime(day.sunset, day.endTimeZone)}`
+              : day.polar === "day"
+                ? "полярный день"
+                : "",
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          String(day.fuelStopsKm.length),
+          `${formatLiters(day.liters)}\n${m(day.fuelCostRub)}`,
+        ];
     const wrapped = values.map((v, c) => w.wrap(v, regular, 8, (cols[c]?.w ?? 50) - 8));
     const noteLines = notes.length ? w.wrap(notes.join("; "), regular, 7.5, A4.w - 2 * M - 8) : [];
     const rowH = Math.max(...wrapped.map((l) => l.length)) * 10 + noteLines.length * 9 + 8;

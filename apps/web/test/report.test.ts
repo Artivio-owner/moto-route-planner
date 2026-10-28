@@ -62,4 +62,31 @@ describe("PDF путевой лист", () => {
     });
     expect(uris.some((u) => u?.includes("example.org/donate"))).toBe(true);
   });
+
+  it("дневка: строка «Дневка» в таблице, PDF собирается (C-11)", async () => {
+    let s = initialState(new Date("2026-07-01T10:00:00Z"));
+    s = reducer(s, { type: "addFromMap", name: "Москва", lat: 55.7, lon: 37.6 });
+    s = reducer(s, { type: "addFromMap", name: "Казань", lat: 55.8, lon: 49.1 });
+    s = reducer(s, { type: "set", patch: { split: { mode: "days", days: 2 } } });
+    s = reducer(s, { type: "toggleRest", afterDay: 1 });
+    const result = computePlan(s, route);
+    expect(result.plan.days.map((d) => d.rest)).toEqual([false, true, false]);
+    // Дневка добавляет ночь и день еды в бюджет.
+    const without = computePlan(reducer(s, { type: "toggleRest", afterDay: 1 }), route);
+    expect(result.budget.nightsPaid).toBe(without.budget.nightsPaid + 1);
+    expect(result.budget.food).toBeGreaterThan(without.budget.food);
+    expect(result.budget.fuel).toBeCloseTo(without.budget.fuel);
+    const bytes = await buildReport({
+      state: s,
+      result,
+      line: routeLine(route),
+      dayLabels: result.plan.days.map((_, i) => ({ from: `Город ${i}`, to: `Город ${i + 1}` })),
+      url: "https://versta.example/plan#r=test",
+      skipMapSnapshot: true,
+      donate: null,
+      fonts: { regular: font("Rubik-Regular.ttf"), bold: font("Rubik-Bold.ttf") },
+      now: new Date("2026-06-20T10:00:00Z"),
+    });
+    expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
+  });
 });

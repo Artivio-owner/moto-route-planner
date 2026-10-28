@@ -54,6 +54,7 @@ export function computePlan(state: PlannerState, route: RouteResponse): PlanResu
       const [lon, lat] = pointAtKm(line, km);
       return { lat, lon };
     },
+    restAfterDays: state.restAfterDays ?? [],
   });
   const b = state.budget;
   const budgetPrices = {

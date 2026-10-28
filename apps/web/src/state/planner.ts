@@ -31,6 +31,8 @@ export interface PlannerState {
   fuelPriceRub?: number;
   rubPerUsd?: number;
   budget: BudgetState;
+  /** Дневки: номера ходовых дней, после которых день отдыха (C-11). */
+  restAfterDays?: number[];
 }
 
 export const CUSTOM_PRESET = "custom";
@@ -112,6 +114,7 @@ export function toRouteState(state: PlannerState): RouteState {
   };
   if (state.fuelPriceRub !== undefined) route.fuelPriceRub = state.fuelPriceRub;
   if (state.rubPerUsd !== undefined) route.rubPerUsd = state.rubPerUsd;
+  if (state.restAfterDays?.length) route.restAfterDays = state.restAfterDays;
   return route;
 }
 
@@ -139,6 +142,7 @@ export type Action =
   | { type: "removePoint"; id: string }
   | { type: "movePoint"; id: string; delta: -1 | 1 }
   | { type: "toggleOvernight"; id: string }
+  | { type: "toggleRest"; afterDay: number }
   | { type: "set"; patch: Partial<Omit<PlannerState, "points" | "profile">> }
   | { type: "resetPrice"; field: "fuelPriceRub" | "rubPerUsd" }
   | { type: "budget"; patch: Partial<BudgetState> }
@@ -217,6 +221,15 @@ export function reducer(state: PlannerState, action: Action): PlannerState {
           p.id === action.id ? { ...p, overnight: !p.overnight } : p,
         ),
       };
+    case "toggleRest": {
+      const current = state.restAfterDays ?? [];
+      const restAfterDays = current.includes(action.afterDay)
+        ? current.filter((n) => n !== action.afterDay)
+        : [...current, action.afterDay].sort((a, b) => a - b);
+      return restAfterDays.length
+        ? { ...state, restAfterDays }
+        : withoutKey(state, "restAfterDays");
+    }
     case "set": {
       const next = { ...state, ...action.patch };
       // При двух мотоциклах людей не меньше двух (спецификация 14, раздел 1).

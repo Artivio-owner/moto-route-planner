@@ -113,6 +113,36 @@ test("разбивка по числу дней и закат в дне", async 
   await expect(page.getByText(/закат \d\d:\d\d/).first()).toBeVisible();
 });
 
+test("дневка: день отдыха в путевом листе и в ссылке (C-11)", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/plan");
+  await pick(page, "Откуда, точка 1", "Старт");
+  await pick(page, "Куда, точка 2", "Финиш");
+  await page
+    .getByRole("group", { name: "Дни" })
+    .getByRole("button", { name: "По числу дней" })
+    .click();
+  const daysField = page.getByLabel(/Уложиться в/);
+  await daysField.fill("2");
+  await daysField.press("Enter");
+  const items = page.getByRole("list", { name: "Дни поездки" }).getByRole("listitem");
+  await expect(items).toHaveCount(2);
+  let url = page.url();
+  await page.getByRole("button", { name: "Дневка после этого дня" }).click();
+  await expect(items).toHaveCount(3);
+  await expect(page.getByText(/День 2 · .* · дневка/)).toBeVisible();
+  await expect(page.getByText(/из них дневок: 1/)).toBeVisible();
+  url = await nextUrl(page, url);
+  const fresh = await page.context().newPage();
+  await mockApi(fresh);
+  await fresh.goto(url);
+  await expect(fresh.getByText(/· дневка/)).toBeVisible();
+  await fresh.getByRole("button", { name: "Убрать дневку" }).click();
+  await expect(fresh.getByRole("list", { name: "Дни поездки" }).getByRole("listitem")).toHaveCount(
+    2,
+  );
+});
+
 /** Ссылка обновляется асинхронно: ждём, пока адрес изменится. */
 async function nextUrl(page: Page, previous: string): Promise<string> {
   await expect.poll(() => page.url()).not.toBe(previous);
