@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { completePoints, type PlannerState } from "../state/planner";
 import { ApiError, fetchRoute, type RouteResponse } from "./api";
+import { loadLastRoute, saveLastRoute } from "./offlineRoute";
 
 export interface RouteStatus {
   route: RouteResponse | null;
   loading: boolean;
   error: string;
+  /** Сети нет, показан сохранённый расчёт: время сохранения (X-07). */
+  offlineSavedAt?: number;
 }
 
 /** Маршрут пересчитывается только при смене точек, возврата и избегания дорог (R-09). */
@@ -25,6 +28,7 @@ export function useRoute(state: PlannerState): RouteStatus {
       avoidUnpaved: state.avoidUnpaved,
       avoidToll: state.avoidToll === true,
       avoidMotorways: state.avoidMotorways === true,
+      key,
     }),
     [key],
   );
@@ -40,9 +44,21 @@ export function useRoute(state: PlannerState): RouteStatus {
     const timer = window.setTimeout(async () => {
       try {
         const route = await fetchRoute(request.points, request, controller.signal);
+        saveLastRoute(request.key, route);
         setStatus({ route, loading: false, error: "" });
       } catch (error) {
         if (controller.signal.aborted) return;
+        const saved =
+          error instanceof ApiError && error.code === "network" ? loadLastRoute(request.key) : null;
+        if (saved) {
+          setStatus({
+            route: saved.route,
+            loading: false,
+            error: "",
+            offlineSavedAt: saved.savedAt,
+          });
+          return;
+        }
         setStatus({
           route: null,
           loading: false,

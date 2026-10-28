@@ -214,6 +214,19 @@ test("граница: предупреждение и цены топлива п
   await expect(page.getByText(/Страны: Россия → Казахстан/)).toBeVisible();
 });
 
+test("без сети: последний расчёт из сохранённой копии (X-07)", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/plan");
+  await pick(page, "Откуда, точка 1", "Старт");
+  await pick(page, "Куда, точка 2", "Финиш");
+  await expect(page.getByText(/День 1 ·/)).toBeVisible();
+  await expect(page).toHaveURL(/#r=/);
+  await page.route("**/api/**", (r) => r.abort("internetdisconnected"));
+  await page.reload();
+  await expect(page.getByText(/Нет сети: показан расчёт, сохранённый/)).toBeVisible();
+  await expect(page.getByText(/День 1 ·/)).toBeVisible();
+});
+
 /** Ссылка обновляется асинхронно: ждём, пока адрес изменится. */
 async function nextUrl(page: Page, previous: string): Promise<string> {
   await expect.poll(() => page.url()).not.toBe(previous);

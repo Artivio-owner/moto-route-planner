@@ -32,6 +32,8 @@ interface Props {
   pdfBusy: boolean;
   /** Дневка после ходового дня (C-11). */
   onToggleRest(afterDay: number): void;
+  /** Нет сети: расчёт из сохранённой копии (X-07). */
+  offlineSavedAt?: number | undefined;
 }
 
 /** Путевой лист в интерфейсе: сводка, дни, предупреждения, действия. */
@@ -48,6 +50,7 @@ export function TripSheet({
   onPdf,
   pdfBusy,
   onToggleRest,
+  offlineSavedAt,
 }: Props) {
   if (error) {
     return (
@@ -76,6 +79,18 @@ export function TripSheet({
   return (
     <section className="card" aria-labelledby="sheet-title" aria-busy={loading}>
       <h2 id="sheet-title">Путевой лист</h2>
+      {offlineSavedAt !== undefined && (
+        <p className="warning" role="status">
+          Нет сети: показан расчёт, сохранённый{" "}
+          {new Date(offlineSavedAt).toLocaleString("ru-RU", {
+            day: "numeric",
+            month: "long",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+          . Карта и погода появятся, когда сеть вернётся.
+        </p>
+      )}
       <div className="summary">
         <div>
           <div className="figure">{formatKm(plan.distanceKm)}</div>
