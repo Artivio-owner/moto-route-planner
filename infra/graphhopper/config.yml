@@ -19,7 +19,11 @@ graphhopper:
   profiles_ch:
     - profile: moto
     - profile: moto_unpaved
+  # LM нужен для запросов со своей моделью (избегание платных и магистралей, M-02):
+  # такие запросы идут без CH. Память на LM для России не измерена (S-03).
   profiles_lm:
+    - profile: moto
+    - profile: moto_unpaved
     - profile: moto_curvy
 
   graph.encoded_values: car_access, car_average_speed, road_access, road_class, road_environment, surface, toll, curvature, max_speed

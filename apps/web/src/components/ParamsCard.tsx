@@ -186,6 +186,28 @@ export function ParamsCard({ state, dispatch }: Props) {
         />
         Избегать грунтовых дорог
       </label>
+      <label className="field row" style={{ flexDirection: "row" }}>
+        <input
+          type="checkbox"
+          checked={state.avoidToll === true}
+          onChange={(e) => set({ avoidToll: e.target.checked })}
+        />
+        Избегать платных дорог
+      </label>
+      <label className="field row" style={{ flexDirection: "row" }}>
+        <input
+          type="checkbox"
+          checked={state.avoidMotorways === true}
+          onChange={(e) => set({ avoidMotorways: e.target.checked })}
+        />
+        Избегать автомагистралей
+      </label>
+      {(state.avoidToll || state.avoidMotorways) && (
+        <p className="hint">
+          Если объезда нет, маршрут всё равно пройдёт по такой дороге: в путевом листе она будет
+          отмечена.
+        </p>
+      )}
 
       <Chips
         label="Валюта"

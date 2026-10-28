@@ -150,8 +150,25 @@ export function explainGraphHopperError(message: string): UserFacingError {
   );
 }
 
+/** Избегание платных дорог и автомагистралей (M-02). */
+export interface AvoidOptions {
+  toll?: boolean;
+  motorway?: boolean;
+}
+
+/**
+ * Своя модель в запросе: приоритет платных участков и автомагистралей снижается в 10 раз.
+ * Это «избегать», а не «запретить»: если другой дороги нет, маршрут всё равно строится.
+ */
+export function avoidModel(avoid: AvoidOptions): { priority: object[] } | null {
+  const priority: object[] = [];
+  if (avoid.toll) priority.push({ if: "toll == ALL", multiply_by: "0.1" });
+  if (avoid.motorway) priority.push({ if: "road_class == MOTORWAY", multiply_by: "0.1" });
+  return priority.length ? { priority } : null;
+}
+
 export interface GraphHopperClient {
-  leg(from: LatLon, to: LatLon, profile: string): Promise<LegResult>;
+  leg(from: LatLon, to: LatLon, profile: string, avoid?: AvoidOptions): Promise<LegResult>;
 }
 
 export function createGraphHopperClient(
@@ -160,7 +177,7 @@ export function createGraphHopperClient(
   fetchImpl: typeof fetch = fetch,
 ): GraphHopperClient {
   return {
-    async leg(from, to, profile) {
+    async leg(from, to, profile, avoid = {}) {
       const body: Record<string, unknown> = {
         points: [
           [from.lon, from.lat],
@@ -171,7 +188,10 @@ export function createGraphHopperClient(
         instructions: false,
         details: ["road_class", "road_environment", "toll", "time"],
       };
-      if (profile === "moto_curvy") body["ch.disable"] = true;
+      const model = avoidModel(avoid);
+      // Своя модель в запросе работает только без CH (на LM-подготовке).
+      if (profile === "moto_curvy" || model) body["ch.disable"] = true;
+      if (model) body["custom_model"] = model;
       let response: Response;
       try {
         response = await fetchImpl(`${baseUrl}/route`, {

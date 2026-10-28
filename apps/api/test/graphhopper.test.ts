@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  avoidModel,
   createGraphHopperClient,
   explainGraphHopperError,
   mapRoadClass,
@@ -79,5 +80,25 @@ describe("классы и ошибки", () => {
     ).rejects.toMatchObject({
       code: "engine_unavailable",
     });
+  });
+
+  it("избегание: своя модель в запросе и отключение CH (M-02)", async () => {
+    let sent: Record<string, unknown> = {};
+    const fakeFetch = (async (_url: string, init: RequestInit) => {
+      sent = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return new Response(JSON.stringify({ message: "Connection between locations not found" }), {
+        status: 400,
+      });
+    }) as unknown as typeof fetch;
+    const client = createGraphHopperClient("http://gh", 1000, fakeFetch);
+    await expect(
+      client.leg({ lat: 55, lon: 37 }, { lat: 55, lon: 38 }, "moto", { toll: true }),
+    ).rejects.toMatchObject({ code: "no_route" });
+    expect(sent["ch.disable"]).toBe(true);
+    expect(sent["custom_model"]).toEqual({
+      priority: [{ if: "toll == ALL", multiply_by: "0.1" }],
+    });
+    expect(avoidModel({})).toBeNull();
+    expect(avoidModel({ motorway: true })?.priority).toHaveLength(1);
   });
 });

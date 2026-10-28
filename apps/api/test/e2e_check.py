@@ -3,16 +3,28 @@ import json
 import sys
 import urllib.request
 
-body = json.dumps({"points": [{"lat": 55.0, "lon": 37.0}, {"lat": 55.0, "lon": 38.7}]}).encode()
-request = urllib.request.Request("http://localhost:8080/api/route", data=body, headers={"Content-Type": "application/json"})
-with urllib.request.urlopen(request, timeout=30) as response:
-    route = json.load(response)
+POINTS = [{"lat": 55.0, "lon": 37.0}, {"lat": 55.0, "lon": 38.7}]
+
+
+def post(payload):
+    body = json.dumps(payload).encode()
+    request = urllib.request.Request("http://localhost:8080/api/route", data=body, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return json.load(response)
+
+
+route = post({"points": POINTS})
 segments = route["legs"][0]["segments"]
+free = post({"points": POINTS, "avoidToll": True, "avoidMotorways": True})
+free_segments = free["legs"][0]["segments"]
 checks = {
     "маршрут построен": route["distanceKm"] > 100,
     "платный участок": any(s.get("toll") for s in segments),
     "паром с временем": any(s.get("ferry") and s.get("fixedDurationH", 0) > 0.5 for s in segments),
     "часовой пояс Москвы": route["zones"][0]["timeZone"] == "Europe/Moscow",
+    "без платных (M-02): нет платных участков": not any(s.get("toll") for s in free_segments),
+    "без магистралей (M-02): нет класса motorway": all(s["roadClass"] != "motorway" for s in free_segments),
+    "объезд длиннее": free["distanceKm"] > route["distanceKm"],
 }
 for name, ok in checks.items():
     print(("ок      " if ok else "ОШИБКА  ") + name)

@@ -15,6 +15,10 @@ export interface RouteRequest {
   points: LatLon[];
   roundTrip?: boolean;
   avoidUnpaved?: boolean;
+  /** Избегать платных дорог (M-02). */
+  avoidToll?: boolean;
+  /** Избегать автомагистралей (M-02). */
+  avoidMotorways?: boolean;
 }
 
 export interface RouteLeg {
@@ -105,22 +109,32 @@ export function buildServer(deps: Dependencies): FastifyInstance {
             points: { type: "array", minItems: 2, items: pointSchema },
             roundTrip: { type: "boolean" },
             avoidUnpaved: { type: "boolean" },
+            avoidToll: { type: "boolean" },
+            avoidMotorways: { type: "boolean" },
           },
         },
       },
     },
     async (request): Promise<RouteResponse> => {
-      const { points, roundTrip = false, avoidUnpaved = true } = request.body;
+      const {
+        points,
+        roundTrip = false,
+        avoidUnpaved = true,
+        avoidToll = false,
+        avoidMotorways = false,
+      } = request.body;
       const profile = avoidUnpaved ? "moto" : "moto_unpaved";
+      const avoid = { toll: avoidToll, motorway: avoidMotorways };
+      const variant = `${profile}${avoidToll ? "+toll" : ""}${avoidMotorways ? "+motorway" : ""}`;
       const stops = roundTrip ? [...points, points[0] as LatLon] : points;
       const pairs = stops.slice(1).map((to, i) => [stops[i] as LatLon, to] as const);
       const key = (p: LatLon): string => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`;
 
       const legs = await mapLimited(pairs, LEG_CONCURRENCY, async ([from, to]) => {
-        const cacheKey = `${profile}|${key(from)}|${key(to)}`;
+        const cacheKey = `${variant}|${key(from)}|${key(to)}`;
         const cached = legCache.get(cacheKey);
         if (cached) return cached;
-        const leg = await deps.graphhopper.leg(from, to, profile);
+        const leg = await deps.graphhopper.leg(from, to, profile, avoid);
         legCache.set(cacheKey, leg);
         return leg;
       });

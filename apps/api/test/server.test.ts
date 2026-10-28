@@ -22,8 +22,9 @@ function fakeLeg(km: number): LegResult {
 function setup(overrides: Partial<GraphHopperClient> = {}) {
   const calls: string[] = [];
   const graphhopper: GraphHopperClient = {
-    async leg(from, to, profile) {
-      calls.push(`${profile}:${from.lat}->${to.lat}`);
+    async leg(from, to, profile, avoid) {
+      const flags = `${avoid?.toll ? "+toll" : ""}${avoid?.motorway ? "+motorway" : ""}`;
+      calls.push(`${profile}${flags}:${from.lat}->${to.lat}`);
       return fakeLeg(100);
     },
     ...overrides,
@@ -66,6 +67,21 @@ describe("POST /api/route", () => {
       payload: { points, roundTrip: true, avoidUnpaved: false },
     });
     expect(calls).toEqual(["moto_unpaved:1->2", "moto_unpaved:2->3", "moto_unpaved:3->1"]);
+  });
+
+  it("избегание платных и магистралей передаётся в движок и в ключ кэша (M-02)", async () => {
+    const { app, calls } = setup();
+    await app.inject({
+      method: "POST",
+      url: "/api/route",
+      payload: { points: points.slice(0, 2) },
+    });
+    await app.inject({
+      method: "POST",
+      url: "/api/route",
+      payload: { points: points.slice(0, 2), avoidToll: true, avoidMotorways: true },
+    });
+    expect(calls).toEqual(["moto:1->2", "moto+toll+motorway:1->2"]);
   });
 
   it("повторный расчёт берёт отрезки из кэша (R-09)", async () => {
