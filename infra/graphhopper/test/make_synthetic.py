@@ -5,6 +5,7 @@
 2. D → E: платная автомагистраль (пометка toll).
 3. F → G: паром (road_environment = ferry).
 4. H → K: прямая магистраль или извилистая региональная дорога (режим «извилистые»).
+5. D → E: бесплатный объезд платной магистрали по региональной дороге (M-02).
 Запуск: python3 make_synthetic.py > synthetic.osm
 """
 import math
@@ -54,6 +55,13 @@ way(link1, highway="secondary", surface="asphalt")
 toll = line(D, E)
 toll[0] = link1[-1]
 way(toll, highway="motorway", toll="yes", surface="asphalt", oneway="no", name="Платная")
+# 5. Бесплатный объезд платной магистрали: длиннее и медленнее.
+free1 = line(D, (55.08, 37.6))
+free2 = line((55.08, 37.6), E)
+free1[0] = toll[0]
+free2[0] = free1[-1]
+free2[-1] = toll[-1]
+way(join(free1, free2), highway="secondary", surface="asphalt", name="Бесплатная")
 
 # 3. Паром через залив.
 F, G = (55.0, 38.0), (55.0, 38.2)

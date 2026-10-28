@@ -48,7 +48,12 @@ async function call<T>(input: string, init?: RequestInit): Promise<T> {
 
 export function fetchRoute(
   points: { lat: number; lon: number }[],
-  options: { roundTrip: boolean; avoidUnpaved: boolean },
+  options: {
+    roundTrip: boolean;
+    avoidUnpaved: boolean;
+    avoidToll: boolean;
+    avoidMotorways: boolean;
+  },
   signal?: AbortSignal,
 ): Promise<RouteResponse> {
   const init: RequestInit = {

@@ -21,6 +21,8 @@ export interface PlannerState {
   points: EditablePoint[];
   roundTrip: boolean;
   avoidUnpaved: boolean;
+  avoidToll?: boolean;
+  avoidMotorways?: boolean;
   startDate: string;
   people: 1 | 2;
   motorcycles: 1 | 2;
@@ -115,6 +117,8 @@ export function toRouteState(state: PlannerState): RouteState {
   if (state.fuelPriceRub !== undefined) route.fuelPriceRub = state.fuelPriceRub;
   if (state.rubPerUsd !== undefined) route.rubPerUsd = state.rubPerUsd;
   if (state.restAfterDays?.length) route.restAfterDays = state.restAfterDays;
+  if (state.avoidToll) route.avoidToll = true;
+  if (state.avoidMotorways) route.avoidMotorways = true;
   return route;
 }
 

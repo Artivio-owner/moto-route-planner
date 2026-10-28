@@ -10,15 +10,25 @@ import urllib.request
 URL = "http://localhost:8989/route"
 
 
-def route(a, b, profile):
+AVOID = {
+    "priority": [
+        {"if": "toll == ALL", "multiply_by": "0.1"},
+        {"if": "road_class == MOTORWAY", "multiply_by": "0.1"},
+    ]
+}
+
+
+def route(a, b, profile, custom_model=None):
     body = {
         "points": [[a[1], a[0]], [b[1], b[0]]],
         "profile": profile,
         "points_encoded": False,
         "details": ["road_class", "surface", "toll", "road_environment", "street_name"],
     }
-    if profile == "moto_curvy":
+    if profile == "moto_curvy" or custom_model:
         body["ch.disable"] = True
+    if custom_model:
+        body["custom_model"] = custom_model
     request = urllib.request.Request(URL, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(request, timeout=30) as response:
         return json.load(response)["paths"][0]
@@ -44,6 +54,15 @@ check("moto_unpaved едет по гравийке", "Гравийка" in value
 
 toll = route((55.0, 37.45), (55.0, 37.75), "moto")
 check("платный участок помечен (toll = all)", "all" in values(toll, "toll"))
+# Точки до и после платной магистрали: между ними есть бесплатный объезд.
+via_toll = route((55.0, 37.3), (55.0, 37.9), "moto")
+check("без избегания едет по платной магистрали", "Платная" in values(via_toll, "street_name"))
+free = route((55.0, 37.3), (55.0, 37.9), "moto", AVOID)
+check("с избеганием (M-02) объезжает платную магистраль", "Платная" not in values(free, "street_name"))
+check("с избеганием нет платных участков", "all" not in values(free, "toll"))
+check("объезд по бесплатной дороге", "Бесплатная" in values(free, "street_name"))
+stuck = route((55.0, 37.45), (55.0, 37.75), "moto", AVOID)
+check("если объезда нет, маршрут всё равно строится", stuck["distance"] > 0)
 
 ferry = route((55.0, 37.95), (55.0, 38.25), "moto")
 check("паром помечен (road_environment = ferry)", "ferry" in values(ferry, "road_environment"))

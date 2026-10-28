@@ -50,6 +50,9 @@ export interface RouteState {
   /** Маршрут с возвратом: флаг, а не новые точки (ADR-0011). */
   roundTrip: boolean;
   avoidUnpaved: boolean;
+  /** Избегать платных дорог и автомагистралей (M-02); в ссылке флаги 4 и 8. */
+  avoidToll?: boolean;
+  avoidMotorways?: boolean;
   /** Дата старта ГГГГ-ММ-ДД. */
   startDate: string;
   people: 1 | 2;
@@ -188,7 +191,10 @@ function pack(state: RouteState): Packed {
   return [
     STATE_VERSION,
     points,
-    (state.roundTrip ? 1 : 0) | (state.avoidUnpaved ? 2 : 0),
+    (state.roundTrip ? 1 : 0) |
+      (state.avoidUnpaved ? 2 : 0) |
+      (state.avoidToll ? 4 : 0) |
+      (state.avoidMotorways ? 8 : 0),
     state.startDate,
     state.people,
     state.motorcycles,
@@ -291,6 +297,8 @@ function unpack(raw: unknown): RouteState {
     currency: currency === 1 ? "USD" : "RUB",
     fuelType: fuelType as RouteState["fuelType"],
   };
+  if ((flags & 4) === 4) state.avoidToll = true;
+  if ((flags & 8) === 8) state.avoidMotorways = true;
   if (isFiniteNumber(price)) state.fuelPriceRub = price;
   if (isFiniteNumber(rate)) state.rubPerUsd = rate;
   if (budget !== undefined && budget !== null) state.budget = unpackBudget(budget);

@@ -8,19 +8,23 @@ export interface RouteStatus {
   error: string;
 }
 
-/** Маршрут пересчитывается только при смене точек, возврата или грунта (R-09). */
+/** Маршрут пересчитывается только при смене точек, возврата и избегания дорог (R-09). */
 export function useRoute(state: PlannerState): RouteStatus {
   const points = completePoints(state);
   const key = JSON.stringify([
     points.map((p) => [p.lat, p.lon]),
     state.roundTrip,
     state.avoidUnpaved,
+    state.avoidToll === true,
+    state.avoidMotorways === true,
   ]);
   const request = useMemo(
     () => ({
       points: completePoints(state),
       roundTrip: state.roundTrip,
       avoidUnpaved: state.avoidUnpaved,
+      avoidToll: state.avoidToll === true,
+      avoidMotorways: state.avoidMotorways === true,
     }),
     [key],
   );

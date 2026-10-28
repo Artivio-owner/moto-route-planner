@@ -171,6 +171,32 @@ test("импорт GPX: понятная ошибка для чужого фай
   await expect(page.locator(".toast")).toContainText("Не удалось открыть GPX: Это не GPX-файл");
 });
 
+test("избегание платных и магистралей уходит в запрос и в ссылку (M-02)", async ({ page }) => {
+  await mockApi(page);
+  const bodies: Record<string, unknown>[] = [];
+  page.on("request", (r) => {
+    if (r.url().endsWith("/api/route")) bodies.push(r.postDataJSON() as Record<string, unknown>);
+  });
+  await page.goto("/plan");
+  await pick(page, "Откуда, точка 1", "Старт");
+  await pick(page, "Куда, точка 2", "Финиш");
+  await expect(page.getByText(/День 1 ·/)).toBeVisible();
+  await expect(page).toHaveURL(/#r=/);
+  let url = page.url();
+  await page.getByLabel("Избегать платных дорог").check();
+  url = await nextUrl(page, url);
+  await page.getByLabel("Избегать автомагистралей").check();
+  url = await nextUrl(page, url);
+  await expect.poll(() => bodies.at(-1)?.["avoidMotorways"]).toBe(true);
+  expect(bodies.at(-1)?.["avoidToll"]).toBe(true);
+  await expect(page.getByText(/Если объезда нет/)).toBeVisible();
+  const fresh = await page.context().newPage();
+  await mockApi(fresh);
+  await fresh.goto(url);
+  await expect(fresh.getByLabel("Избегать платных дорог")).toBeChecked();
+  await expect(fresh.getByLabel("Избегать автомагистралей")).toBeChecked();
+});
+
 /** Ссылка обновляется асинхронно: ждём, пока адрес изменится. */
 async function nextUrl(page: Page, previous: string): Promise<string> {
   await expect.poll(() => page.url()).not.toBe(previous);

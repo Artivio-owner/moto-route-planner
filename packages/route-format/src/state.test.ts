@@ -55,6 +55,15 @@ describe("состояние в ссылке", () => {
     expect((await decodeState(await encodeState(sampleState(true)))).restAfterDays).toBeUndefined();
   });
 
+  it("избегание платных и магистралей в ссылке (M-02)", async () => {
+    const state = { ...sampleState(true), avoidToll: true, avoidMotorways: true };
+    const decoded = await decodeState(await encodeState(state));
+    expect(decoded.avoidToll).toBe(true);
+    expect(decoded.avoidMotorways).toBe(true);
+    const plain = await decodeState(await encodeState(sampleState(true)));
+    expect(plain.avoidToll).toBeUndefined();
+  });
+
   it("строка годится для адреса без экранирования", async () => {
     expect(await encodeState(sampleState(true))).toMatch(/^[A-Za-z0-9_-]+$/);
   });
