@@ -197,6 +197,23 @@ test("избегание платных и магистралей уходит �
   await expect(fresh.getByLabel("Избегать автомагистралей")).toBeChecked();
 });
 
+test("граница: предупреждение и цены топлива по странам (R-10)", async ({ page }) => {
+  await mockApi(page);
+  const abroad = JSON.parse(route) as { zones: { fromKm: number; timeZone: string }[] };
+  abroad.zones = [
+    { fromKm: 0, timeZone: "Europe/Samara" },
+    { fromKm: 60, timeZone: "Asia/Oral" },
+  ];
+  await page.route("**/api/route", (r) =>
+    r.fulfill({ contentType: "application/json", body: JSON.stringify(abroad) }),
+  );
+  await page.goto("/plan");
+  await pick(page, "Откуда, точка 1", "Старт");
+  await pick(page, "Куда, точка 2", "Финиш");
+  await expect(page.getByText(/Граница: Россия → Казахстан/)).toBeVisible();
+  await expect(page.getByText(/Страны: Россия → Казахстан/)).toBeVisible();
+});
+
 /** Ссылка обновляется асинхронно: ждём, пока адрес изменится. */
 async function nextUrl(page: Page, previous: string): Promise<string> {
   await expect.poll(() => page.url()).not.toBe(previous);

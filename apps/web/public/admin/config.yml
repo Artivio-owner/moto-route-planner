@@ -67,6 +67,102 @@ collections:
                       required: false,
                     }
 
+              - name: KZ
+                label: Казахстан, ₽ за литр (v0.2)
+                required: false
+                widget: object
+                fields:
+                  - {
+                      name: "92",
+                      label: АИ-92,
+                      widget: number,
+                      value_type: float,
+                      min: 1,
+                      max: 1000,
+                      required: false,
+                    }
+                  - {
+                      name: "95",
+                      label: АИ-95,
+                      widget: number,
+                      value_type: float,
+                      min: 1,
+                      max: 1000,
+                    }
+                  - {
+                      name: "100",
+                      label: АИ-100,
+                      widget: number,
+                      value_type: float,
+                      min: 1,
+                      max: 1000,
+                      required: false,
+                    }
+
+              - name: GE
+                label: Грузия, ₽ за литр (v0.2)
+                required: false
+                widget: object
+                fields:
+                  - {
+                      name: "92",
+                      label: АИ-92,
+                      widget: number,
+                      value_type: float,
+                      min: 1,
+                      max: 1000,
+                      required: false,
+                    }
+                  - {
+                      name: "95",
+                      label: АИ-95,
+                      widget: number,
+                      value_type: float,
+                      min: 1,
+                      max: 1000,
+                    }
+                  - {
+                      name: "100",
+                      label: АИ-100,
+                      widget: number,
+                      value_type: float,
+                      min: 1,
+                      max: 1000,
+                      required: false,
+                    }
+
+              - name: TR
+                label: Турция, ₽ за литр (v0.2)
+                required: false
+                widget: object
+                fields:
+                  - {
+                      name: "92",
+                      label: АИ-92,
+                      widget: number,
+                      value_type: float,
+                      min: 1,
+                      max: 1000,
+                      required: false,
+                    }
+                  - {
+                      name: "95",
+                      label: АИ-95,
+                      widget: number,
+                      value_type: float,
+                      min: 1,
+                      max: 1000,
+                    }
+                  - {
+                      name: "100",
+                      label: АИ-100,
+                      widget: number,
+                      value_type: float,
+                      min: 1,
+                      max: 1000,
+                      required: false,
+                    }
+
       - name: exchange-rate
         label: Курс доллара
         file: data/exchange-rate.json

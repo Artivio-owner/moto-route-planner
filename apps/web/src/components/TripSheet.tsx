@@ -1,4 +1,4 @@
-import { formatLocalTime, type Currency } from "@versta/calc";
+import { countryName, formatLocalTime, type Currency } from "@versta/calc";
 import {
   formatDate,
   formatHours,
@@ -106,6 +106,15 @@ export function TripSheet({
         Запас хода около {formatKm(plan.rangeKm)}. Ночей в пути: {plan.nights}
         {plan.restDays > 0 ? `, из них дневок: ${plan.restDays}` : ""}.
       </p>
+      {result.countryFuelPrices.length > 1 && (
+        <p className="hint">
+          Страны: {plan.countries.map(countryName).join(" → ")}. Топливо:{" "}
+          {result.countryFuelPrices
+            .map((c) => `${countryName(c.country)} ${money(c.priceRub, currency, rate)}/л`)
+            .join(", ")}{" "}
+          <span className="mark">ориентировочно</span>
+        </p>
+      )}
       <BudgetSummary result={result} currency={currency} />
       {longRoute && (
         <p className="warning">

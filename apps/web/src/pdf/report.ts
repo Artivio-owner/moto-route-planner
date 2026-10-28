@@ -2,7 +2,7 @@
 // километраж по дням, источники. Спецификация: docs/11-pdf-report-spec.md.
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, PDFString, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
-import { FOOD_LABELS, LODGING_LABELS, formatLocalTime } from "@versta/calc";
+import { FOOD_LABELS, LODGING_LABELS, countryName, formatLocalTime } from "@versta/calc";
 import { site } from "../config";
 import type { DayWeather, LonLat } from "../lib/api";
 import { describeWeather, weatherSource, weatherWarnings } from "../lib/weather";
@@ -259,6 +259,11 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
       `${formatDate(state.startDate)} — ${lastDay ? formatDate(lastDay.date) : ""}, ${pluralDays(plan.days.length)}${plan.restDays ? `, из них дневок: ${plan.restDays}` : ""}`,
       `Людей: ${plan.group.people}, мотоциклов: ${plan.group.motorcycles}. Мотоцикл: ${presetName}, бак ${state.profile.tankL} л, расход ${String(state.profile.consumptionLPer100Km).replace(".", ",")} л/100 км`,
       `Валюта: ${cur === "RUB" ? "рубли" : `доллары (курс ${String(rubPerUsd).replace(".", ",")} ₽ за $${result.rateEdited ? ", ваш" : ", ориентировочно"})`}. ${state.avoidUnpaved ? "Без грунтовых дорог" : "Грунтовые дороги разрешены"}${state.avoidToll ? ", избегать платных" : ""}${state.avoidMotorways ? ", избегать автомагистралей" : ""}${state.roundTrip ? ", с возвратом" : ""}.`,
+      ...(plan.countries.length > 1
+        ? [
+            `Страны: ${plan.countries.map(countryName).join(" → ")}. Топливо: ${result.countryFuelPrices.map((c) => `${countryName(c.country)} ${m(c.priceRub)}/л`).join(", ")} (ориентировочно).`,
+          ]
+        : []),
       `Рассчитано: ${now.toLocaleDateString("ru-RU")}`,
     ].join("\n"),
     { size: 10, color: C.muted, gap: 8 },
@@ -322,7 +327,9 @@ export async function buildReport(input: ReportInput): Promise<Uint8Array> {
     [
       "Топливо",
       budget.fuel,
-      `${formatLiters(plan.liters)} × ${String(result.fuelPriceRub).replace(".", ",")} ₽/л${edited(result.fuelPriceEdited)}`,
+      result.countryFuelPrices.length > 1
+        ? `${formatLiters(plan.liters)} по ценам стран: ${result.countryFuelPrices.map((c) => `${countryName(c.country)} ${String(c.priceRub).replace(".", ",")} ₽/л`).join(", ")}${edited(result.fuelPriceEdited)}`
+        : `${formatLiters(plan.liters)} × ${String(result.fuelPriceRub).replace(".", ",")} ₽/л${edited(result.fuelPriceEdited)}`,
     ],
     [
       "Жильё",

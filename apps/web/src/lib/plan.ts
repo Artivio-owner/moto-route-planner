@@ -1,6 +1,20 @@
 // Расчёт плана поездки из состояния и ответа API.
-import { computeBudget, planTrip, type Budget, type Leg, type TripPlan } from "@versta/calc";
-import { budgetDefaults, defaultFuelPrice, exchangeRate, stopSettings } from "../config";
+import {
+  computeBudget,
+  countryMarks,
+  planTrip,
+  type Budget,
+  type Leg,
+  type PriceMark,
+  type TripPlan,
+} from "@versta/calc";
+import {
+  budgetDefaults,
+  defaultFuelPrice,
+  exchangeRate,
+  hasCountryFuelPrice,
+  stopSettings,
+} from "../config";
 import { completePoints, type PlannerState } from "../state/planner";
 import type { LonLat, RouteResponse } from "./api";
 
@@ -12,6 +26,8 @@ export interface PlanResult {
   fuelPriceEdited: boolean;
   rateEdited: boolean;
   budget: Budget;
+  /** Цены топлива по странам маршрута, ₽/л (v0.2); ваша цена действует в России. */
+  countryFuelPrices: { country: string; priceRub: number }[];
   /** Цены бюджета, по которым посчитано, и признак «изменено пользователем». */
   budgetPrices: {
     room: number;
@@ -41,14 +57,30 @@ export function computePlan(state: PlannerState, route: RouteResponse): PlanResu
   });
   const fuelPriceRub = fuelPriceOf(state);
   const line = routeLine(route);
+  const zones = route.zones.length ? route.zones : [{ fromKm: 0, timeZone: "Europe/Moscow" }];
+  // Ваша цена топлива действует в России и там, где страна не определена;
+  // в странах v0.2 берётся цена по умолчанию из data/ (правится в админке).
+  const priceFor = (country: string | null): number =>
+    country && country !== "RU" && hasCountryFuelPrice(country)
+      ? defaultFuelPrice(state.fuelType, country)
+      : fuelPriceRub;
+  const marks = countryMarks(zones);
+  const fuelPriceMarks: PriceMark[] = marks.map((m) => ({
+    fromKm: m.fromKm,
+    priceRub: priceFor(m.country),
+  }));
+  const countryFuelPrices = [...new Set(marks.map((m) => m.country))]
+    .filter((c): c is string => c !== null)
+    .map((country) => ({ country, priceRub: priceFor(country) }));
   const plan = planTrip({
     legs,
     split: state.split,
     profile: state.profile,
     group: { people: state.people, motorcycles: state.motorcycles },
     startDate: state.startDate,
-    zones: route.zones.length ? route.zones : [{ fromKm: 0, timeZone: "Europe/Moscow" }],
+    zones,
     fuelPriceRub,
+    fuelPriceMarks,
     stops: stopSettings,
     positionAtKm: (km) => {
       const [lon, lat] = pointAtKm(line, km);
@@ -89,6 +121,7 @@ export function computePlan(state: PlannerState, route: RouteResponse): PlanResu
     rateEdited: state.rubPerUsd !== undefined,
     budget,
     budgetPrices,
+    countryFuelPrices,
   };
 }
 
