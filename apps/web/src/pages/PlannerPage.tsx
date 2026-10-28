@@ -4,6 +4,7 @@ import {
   encodeState,
   exportFileName,
   STATE_HASH_PREFIX,
+  parseGpx,
 } from "@versta/route-format";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { BudgetCard } from "../components/BudgetCard";
@@ -13,6 +14,9 @@ import { ParamsCard } from "../components/ParamsCard";
 import { PointsCard } from "../components/PointsCard";
 import { TripSheet, type DayLabel } from "../components/TripSheet";
 import { LONG_LINK_CHARS, tripDefaults } from "../config";
+
+/** Предел размера GPX-файла: больше обычно бывают только многодневные треки с частой записью. */
+const GPX_MAX_BYTES = 20 * 1024 * 1024;
 import { coordsName, reversePlace, type LonLat } from "../lib/api";
 import { downloadBlob } from "../lib/download";
 import { computePlan, pointAtKm, routeLine, sliceLine } from "../lib/plan";
@@ -200,6 +204,38 @@ export function PlannerPage() {
     dispatch({ type: "placePoint", id, name: place?.name ?? coordsName(lat, lon), lat, lon });
   }
 
+  async function importGpx(file: File) {
+    if (file.size > GPX_MAX_BYTES) {
+      showToast("Файл больше 20 МБ: выберите файл поменьше");
+      return;
+    }
+    try {
+      const parsed = parseGpx(await file.text());
+      const points = parsed.points.map((p, i) => ({
+        name: p.name ?? coordsName(p.lat, p.lon),
+        lat: p.lat,
+        lon: p.lon,
+        index: i,
+      }));
+      dispatch({ type: "importPoints", points });
+      const what =
+        parsed.source === "track"
+          ? `трек прорежен до ${points.length} точек, маршрут построен заново по нашим дорогам`
+          : `точек: ${points.length}`;
+      showToast(`GPX загружен: ${what}${parsed.truncated ? " (часть точек пропущена)" : ""}`);
+      // Точкам без названия подбираем ближайший населённый пункт.
+      for (const p of points) {
+        if (parsed.points[p.index]?.name) continue;
+        const place = await reversePlace(p.lat, p.lon);
+        if (place) dispatch({ type: "renameAt", lat: p.lat, lon: p.lon, name: place.name });
+      }
+    } catch (e) {
+      showToast(
+        e instanceof Error ? `Не удалось открыть GPX: ${e.message}` : "Не удалось открыть GPX",
+      );
+    }
+  }
+
   async function share() {
     const url = window.location.href;
     try {
@@ -283,7 +319,7 @@ export function PlannerPage() {
             {loadError}
           </p>
         )}
-        <PointsCard state={state} dispatch={dispatch} />
+        <PointsCard state={state} dispatch={dispatch} onGpxFile={(f) => void importGpx(f)} />
         <ParamsCard state={state} dispatch={dispatch} />
         <BudgetCard state={state} dispatch={dispatch} />
         <HistoryCard

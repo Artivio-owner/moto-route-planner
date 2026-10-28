@@ -83,7 +83,7 @@ test("маршрут, дни, ссылка, PDF и GPX", async ({ page }) => {
 
   const [gpx] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "GPX" }).click(),
+    page.getByRole("button", { name: "GPX", exact: true }).click(),
   ]);
   const gpxText = readFileSync((await gpx.path()) as string, "utf8");
   expect(gpxText).toContain('<gpx version="1.1"');
@@ -141,6 +141,34 @@ test("дневка: день отдыха в путевом листе и в с�
   await expect(fresh.getByRole("list", { name: "Дни поездки" }).getByRole("listitem")).toHaveCount(
     2,
   );
+});
+
+test("импорт GPX: точки из файла, маршрут строится (X-05)", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/plan");
+  const gpx = `<?xml version="1.0"?><gpx version="1.1" creator="Test"><trk><trkseg>
+    <trkpt lat="55.0" lon="37.0"/><trkpt lat="55.0" lon="37.8"/><trkpt lat="55.0" lon="38.7"/>
+  </trkseg></trk></gpx>`;
+  await page.getByLabel("GPX-файл").setInputFiles({
+    name: "track.gpx",
+    mimeType: "application/gpx+xml",
+    buffer: Buffer.from(gpx),
+  });
+  await expect(page.locator(".toast")).toContainText("GPX загружен");
+  await expect(page.getByRole("combobox", { name: "Откуда, точка 1" })).toHaveValue("Деревня");
+  await expect(page.getByRole("combobox", { name: "Куда, точка 3" })).toBeVisible();
+  await expect(page.getByText(/День 1 ·/)).toBeVisible();
+});
+
+test("импорт GPX: понятная ошибка для чужого файла", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/plan");
+  await page.getByLabel("GPX-файл").setInputFiles({
+    name: "notes.gpx",
+    mimeType: "application/gpx+xml",
+    buffer: Buffer.from("просто текст"),
+  });
+  await expect(page.locator(".toast")).toContainText("Не удалось открыть GPX: Это не GPX-файл");
 });
 
 /** Ссылка обновляется асинхронно: ждём, пока адрес изменится. */
