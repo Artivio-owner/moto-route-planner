@@ -13,7 +13,16 @@ export interface RouteLeg {
 }
 
 export type PoiKind =
-  "fuel" | "hotel" | "motel" | "guest_house" | "hostel" | "camp_site" | "chalet";
+  | "fuel"
+  | "hotel"
+  | "motel"
+  | "guest_house"
+  | "hostel"
+  | "camp_site"
+  | "chalet"
+  | "city"
+  | "town"
+  | "village";
 
 /** АЗС или жильё вдоль маршрута (v0.3, P-07). */
 export interface RoutePoi {

@@ -2,7 +2,13 @@
 // Спецификации: docs/08-day-split-spec.md, docs/14-trip-parameters-spec.md.
 
 import { countryMarks, countryName, fuelCostByMarks, type PriceMark } from "./countries.js";
-import { dayBoundariesKm, type Leg, type SplitMode } from "./days.js";
+import {
+  dayBoundariesKm,
+  snapBoundariesToPlaces,
+  type Leg,
+  type PlaceOnRoute,
+  type SplitMode,
+} from "./days.js";
 import { fuelLiters, fuelStopsAtStations, fuelStopsKm, rangeKm, type FuelGap } from "./fuel.js";
 import { normalizeGroup, type Group } from "./group.js";
 import {
@@ -78,6 +84,11 @@ export interface TripInput {
    * а участки без АЗС дальше запаса хода дают предупреждение. Без слоя POI: undefined.
    */
   fuelStationsKm?: readonly number[];
+  /**
+   * Населённые пункты вдоль маршрута (C-10): автоматические границы дней сдвигаются
+   * к ближайшему в пределах 10% длины дня. В ручном режиме не используются.
+   */
+  places?: readonly PlaceOnRoute[];
 }
 
 export type DayWarningKind =
@@ -121,6 +132,8 @@ export interface DayPlan {
   /** Пересечения границ за день (R-10). */
   borders: BorderCrossing[];
   warnings: DayWarning[];
+  /** Населённый пункт ночёвки, к которому привязан финиш дня (C-10); иначе пусто. */
+  endPlace: string;
 }
 
 export interface BorderCrossing {
@@ -337,6 +350,7 @@ function restDay(
     liters: 0,
     fuelCostRub: 0,
     borders: [],
+    endPlace: "",
     ...sunForDay(input, date, after.endKm, after.endKm),
     warnings: [],
   };
@@ -355,12 +369,17 @@ export function planTrip(input: TripInput): TripPlan {
   const fuelGaps = atStations?.gaps ?? [];
   const profile = timeProfile(segments, input.profile.speeds);
   const { split } = input;
-  const boundaries =
+  const rawBoundaries =
     split.mode === "hours"
       ? boundariesByHours(profile, allFuelStops, stops, split.maxHoursPerDay)
       : split.mode === "days"
         ? boundariesByDays(profile, split.days)
         : dayBoundariesKm(input.legs, split);
+  const snapped =
+    split.mode !== "manual" && input.places?.length
+      ? snapBoundariesToPlaces(rawBoundaries, input.places)
+      : { boundaries: rawBoundaries, names: rawBoundaries.map(() => "") };
+  const boundaries = snapped.boundaries;
   const distanceKm = boundaries[boundaries.length - 1] ?? 0;
 
   const crossings: BorderCrossing[] = [];
@@ -444,7 +463,7 @@ export function planTrip(input: TripInput): TripPlan {
     if (sun.polar === "night") {
       warnings.push({ kind: "afterSunset", message: "Полярная ночь: весь день в темноте" });
     }
-    days.push({ ...day, ...sun, warnings });
+    days.push({ ...day, ...sun, warnings, endPlace: snapped.names[index] ?? "" });
     if (rest.has(index + 1)) days.push(restDay(input, stops, day, days.length + 1));
     startKm = endKm;
   });

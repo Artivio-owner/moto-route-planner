@@ -133,4 +133,13 @@ describe("расчёт плана из ответа API", () => {
     );
     expect(describeLodging(pois[3] as (typeof pois)[number])).toBe("Кемпинг, у дороги");
   });
+
+  it("граница дня тянется к населённому пункту из слоя POI (C-10)", () => {
+    const s = reducer(state(), { type: "set", patch: { split: { mode: "km", maxKmPerDay: 400 } } });
+    const pois = [{ kind: "town" as const, name: "Муром", lat: 55, lon: 42, km: 385, offKm: 0.5 }];
+    const { plan } = computePlan(s, { ...route, pois });
+    expect(Math.round(plan.days[0]?.endKm ?? 0)).toBe(385);
+    expect(plan.days[0]?.endPlace).toBe("Муром");
+    expect(lodgingNear(pois, 385)).toEqual([]);
+  });
 });

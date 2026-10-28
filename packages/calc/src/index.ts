@@ -8,8 +8,8 @@ export {
   fuelCostByMarks,
 } from "./countries.js";
 export type { CountryMark, PriceMark } from "./countries.js";
-export { dayBoundariesKm } from "./days.js";
-export type { Leg, SplitMode } from "./days.js";
+export { SNAP_TOLERANCE_SHARE, dayBoundariesKm, snapBoundariesToPlaces } from "./days.js";
+export type { Leg, PlaceOnRoute, SplitMode } from "./days.js";
 export {
   RANGE_RESERVE,
   fuelCost,

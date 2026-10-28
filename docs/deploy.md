@@ -44,6 +44,8 @@ REGIONS="ru kz ge tr" ./scripts/prepare-data.sh   # нужен osmium-tool: apt 
 - Не проверено: размеры, память и время сборки графа для четырёх стран (G-01).
 
 ## Проверка на одном регионе (например, на своём компьютере)
+Пошагово для телефона: `docs/local-phone-test.md`.
+
 ```bash
 REGIONS="ru/central-fed-district" BBOX="30,50,45,60" ./scripts/prepare-data.sh
 ```

@@ -30,6 +30,7 @@ checks = {
     "АЗС вдоль маршрута (P-07)": any(p["kind"] == "fuel" and p["name"] == "АЗС у Объезда" for p in route.get("pois", [])),
     "гостиница рядом с дорогой (P-07)": any(p["kind"] == "hotel" for p in route.get("pois", [])),
     "дальний кемпинг не попал": not any(p["kind"] == "camp_site" for p in route.get("pois", [])),
+    "деревня для границ дня (C-10)": any(p["kind"] == "village" for p in route.get("pois", [])),
 }
 for name, ok in checks.items():
     print(("ок      " if ok else "ОШИБКА  ") + name)

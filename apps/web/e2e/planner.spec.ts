@@ -248,6 +248,7 @@ test("АЗС и ночлег вдоль маршрута (P-07)", async ({ page 
   withPois.pois = [
     { kind: "fuel", name: "Тест-АЗС", lat: 55, lon: 37.5, km: 30, offKm: 0.1 },
     { kind: "guest_house", name: "Гостевой дом «Привал»", lat: 55, lon: 37.9, km: 88, offKm: 0.8 },
+    { kind: "town", name: "Посёлок Привальный", lat: 55, lon: 37.9, km: 85, offKm: 0.3 },
   ];
   await page.route("**/api/route", (r) =>
     r.fulfill({ contentType: "application/json", body: JSON.stringify(withPois) }),
@@ -265,6 +266,8 @@ test("АЗС и ночлег вдоль маршрута (P-07)", async ({ page 
   await expect(page.getByText(/АЗС на участке 1/)).toBeVisible();
   await expect(page.getByText(/Ночлег у финиша: Гостевой дом «Привал»/)).toBeVisible();
   await expect(page.getByText(/заправки на АЗС из OpenStreetMap/)).toBeVisible();
+  // Граница дня привязана к населённому пункту (C-10).
+  await expect(page.getByText("Старт — Посёлок Привальный")).toBeVisible();
 });
 
 /** Ссылка обновляется асинхронно: ждём, пока адрес изменится. */

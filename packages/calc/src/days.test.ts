@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayBoundariesKm, type Leg } from "./days.js";
+import { dayBoundariesKm, snapBoundariesToPlaces, type Leg } from "./days.js";
 
 const leg = (km: number, overnight = false): Leg => ({
   segments: [{ distanceKm: km, roadClass: "trunk" }],
@@ -39,5 +39,25 @@ describe("вручную, от города до города", () => {
 
   it("флаг ночёвки на последнем отрезке не создаёт пустой день", () => {
     expect(dayBoundariesKm([leg(300, true)], { mode: "manual" })).toEqual([300]);
+  });
+});
+
+describe("привязка границ дня к населённым пунктам (C-10)", () => {
+  const places = [
+    { km: 290, name: "Деревня", rank: 1 as const },
+    { km: 310, name: "Городок", rank: 2 as const },
+    { km: 640, name: "Далеко", rank: 3 as const },
+  ];
+
+  it("ближайший пункт в пределах 10% длины дня, при равенстве крупнее", () => {
+    expect(snapBoundariesToPlaces([300, 600, 900], places)).toEqual({
+      boundaries: [310, 600, 900],
+      names: ["Городок", "", ""],
+    });
+  });
+
+  it("финиш маршрута не сдвигается, слишком далёкий пункт не берётся", () => {
+    expect(snapBoundariesToPlaces([300], places).boundaries).toEqual([300]);
+    expect(snapBoundariesToPlaces([500, 900], places).names).toEqual(["", ""]);
   });
 });
