@@ -52,7 +52,7 @@ export function PlannerPage() {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [toast, showToast] = useToast();
   const loaded = useRef(false);
-  const { route, loading, error } = useRoute(state);
+  const { route, loading, error, offlineSavedAt } = useRoute(state);
 
   // Маршрут из ссылки (#r=...).
   useEffect(() => {
@@ -360,6 +360,7 @@ export function PlannerPage() {
           onPdf={() => void pdf()}
           pdfBusy={pdfBusy}
           onToggleRest={(afterDay) => dispatch({ type: "toggleRest", afterDay })}
+          offlineSavedAt={offlineSavedAt}
         />
       </div>
       {toast && (
